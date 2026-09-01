@@ -1,0 +1,28 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 型を剥がして .ts をそのまま実行する機能が要る。22.18 以降。
+        node-version: ["22.18", "24"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # 実行時の依存はゼロ。開発時のみ tsc を使う。
+      - run: npm ci
+      - name: 型検査
+        run: npm run check
+      - name: 単体テスト
+        run: npm test
