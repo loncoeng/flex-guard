@@ -3,6 +3,24 @@
   "version": "0.1.0",
   "description": "Catch what LINE rejects, and what it renders wrong without telling you",
   "license": "MIT",
+  "keywords": [
+    "line",
+    "line-messaging-api",
+    "flex-message",
+    "validation",
+    "linter",
+    "chatbot"
+  ],
+  "author": "Coeng",
+  "homepage": "https://lon-coeng.github.io/flex-guard/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lon-coeng/flex-guard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lon-coeng/flex-guard/issues"
+  },
+  "sideEffects": false,
   "type": "module",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
@@ -24,7 +42,8 @@
     "build": "tsc",
     "spec:generate": "node scripts/generate-spec.ts",
     "demo:build": "node scripts/build-demo.ts",
-    "demo:check": "node scripts/build-demo.ts --check"
+    "demo:check": "node scripts/build-demo.ts --check",
+    "prepack": "tsc"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
