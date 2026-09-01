@@ -1,6 +1,7 @@
 # flex-guard
 
 [![test](https://github.com/lon-coeng/flex-guard/actions/workflows/test.yml/badge.svg)](https://github.com/lon-coeng/flex-guard/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/flex-guard?color=1C4E93&label=npm)](https://www.npmjs.com/package/flex-guard)
 
 *[日本語版 / Japanese version](README.ja.md)*
 
