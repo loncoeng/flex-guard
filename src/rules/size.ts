@@ -15,8 +15,12 @@ const CAROUSEL_MAX_BYTES = 50 * 1024;
 const SIZE_REFERENCE =
   "https://engineering.linecorp.com/en/blog/introducing-flex-message-a-new-message-type-for-line-messaging-api/";
 
+// TextEncoder を使うのは、Node とブラウザの両方で動かすため。Buffer は
+// Node にしかない。上限はバイト数で決まっており、日本語は 1 文字 3 バイト
+// なので、文字数で数えると 3 倍近くずれる。
+const encoder = new TextEncoder();
 const bytes = (value: unknown): number =>
-  Buffer.byteLength(JSON.stringify(value) ?? "", "utf8");
+  encoder.encode(JSON.stringify(value) ?? "").length;
 
 const kb = (n: number): string => `${(n / 1024).toFixed(1)}KB`;
 

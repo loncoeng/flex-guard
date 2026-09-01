@@ -6,10 +6,13 @@ import test from "node:test";
 import { validate } from "../src/index.ts";
 import { at, validBubble, validCarousel } from "./fixtures.ts";
 
+const size = (value: unknown): number =>
+  new TextEncoder().encode(JSON.stringify(value)).length;
+
 /** 指定バイト数に届くまで本文を膨らませる。 */
 function inflate(message: any, target: number): any {
   const body = at(message, ["contents", "body", "contents"]);
-  while (Buffer.byteLength(JSON.stringify(message.contents), "utf8") < target) {
+  while (size(message.contents) < target) {
     body.push({ type: "text", text: "あ".repeat(500) });
   }
   return message;
@@ -36,7 +39,7 @@ test("carousel の上限は 50KB で、bubble の 10KB ではない", () => {
   // 20KB の carousel は通る。bubble の上限で判定していると、ここで誤検出する。
   const message: any = validCarousel();
   const first = message.contents.contents[0];
-  while (Buffer.byteLength(JSON.stringify(message.contents), "utf8") < 20 * 1024) {
+  while (size(message.contents) < 20 * 1024) {
     first.body.contents.push({ type: "text", text: "あ".repeat(500) });
   }
   assert.deepEqual(validate(message).errors, []);
@@ -45,7 +48,7 @@ test("carousel の上限は 50KB で、bubble の 10KB ではない", () => {
 test("50KB を超えた carousel を error にする", () => {
   const message: any = validCarousel();
   const first = message.contents.contents[0];
-  while (Buffer.byteLength(JSON.stringify(message.contents), "utf8") < 50 * 1024 + 1) {
+  while (size(message.contents) < 50 * 1024 + 1) {
     first.body.contents.push({ type: "text", text: "あ".repeat(500) });
   }
   assert.equal(validate(message).errors[0]?.rule, "size/carousel-too-large");
