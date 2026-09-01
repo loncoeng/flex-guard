@@ -58,6 +58,12 @@ if (!result.ok) {
           opts out of that, so it dissolves for anyone in dark mode.
 ```
 
+## Try it
+
+**[Live demo](https://lon-coeng.github.io/flex-guard/)** — paste a message, watch what comes back.
+
+It runs this repository's build output, not a rewrite for the page (`npm run demo:build` generates it; CI checks the two still match). The page is static and talks to no server once it has loaded.
+
 ## error and warning mean different things
 
 **This split is the decision the whole library is built around.**

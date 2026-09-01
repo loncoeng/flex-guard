@@ -26,3 +26,8 @@ jobs:
         run: npm run check
       - name: 単体テスト
         run: npm test
+
+      # デモページは src のビルド結果を埋め込んでいる。書き直しではないので、
+      # src を直したら生成し直す必要がある。忘れるとページだけ古いまま残る。
+      - name: デモページが src と一致しているか
+        run: npm run demo:check

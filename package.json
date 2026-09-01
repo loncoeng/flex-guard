@@ -22,7 +22,9 @@
     "test": "node --test \"test/*.test.ts\"",
     "check": "tsc --noEmit",
     "build": "tsc",
-    "spec:generate": "node scripts/generate-spec.ts"
+    "spec:generate": "node scripts/generate-spec.ts",
+    "demo:build": "node scripts/build-demo.ts",
+    "demo:check": "node scripts/build-demo.ts --check"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

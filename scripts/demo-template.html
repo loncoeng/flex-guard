@@ -1,0 +1,664 @@
+<title>flex-guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* 校正刷りの赤入れを下敷きにしている。冷たい紙の地、校正鉛筆の青、
+     茜と黄土の指摘。地の灰は青緑に寄せて、選んだ色であることを示す。 */
+  :root {
+    --ground: #EDEFEA;
+    --surface: #FCFCFA;
+    --surface-sunk: #E4E7DF;
+    --ink: #191D18;
+    --ink-soft: #5C645B;
+    --ink-faint: #8B928A;
+    --rule: #D3D8CD;
+    --accent: #1C4E93;
+    --accent-soft: #E3EAF5;
+    --error: #A32A1C;
+    --error-soft: #F7E7E4;
+    --warn: #8A6510;
+    --warn-soft: #F6EEDC;
+    --pass: #2C6B4A;
+    --pass-soft: #E2EFE7;
+
+    --step--1: 0.8125rem;
+    --step-0: 0.9375rem;
+    --step-1: 1.125rem;
+    --step-2: 1.5rem;
+    --step-3: 2.25rem;
+
+    --sans: "Public Sans", ui-sans-serif, system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    --display: "Familjen Grotesk", "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #151813;
+      --surface: #1D211B;
+      --surface-sunk: #12150F;
+      --ink: #E4E7DF;
+      --ink-soft: #9AA196;
+      --ink-faint: #6E756B;
+      --rule: #2F342C;
+      --accent: #8DB1E9;
+      --accent-soft: #1C2635;
+      --error: #E88F80;
+      --error-soft: #33201C;
+      --warn: #D8B460;
+      --warn-soft: #2E2716;
+      --pass: #7FC79E;
+      --pass-soft: #17271E;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #151813;
+    --surface: #1D211B;
+    --surface-sunk: #12150F;
+    --ink: #E4E7DF;
+    --ink-soft: #9AA196;
+    --ink-faint: #6E756B;
+    --rule: #2F342C;
+    --accent: #8DB1E9;
+    --accent-soft: #1C2635;
+    --error: #E88F80;
+    --error-soft: #33201C;
+    --warn: #D8B460;
+    --warn-soft: #2E2716;
+    --pass: #7FC79E;
+    --pass-soft: #17271E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.5rem, 3vw, 2.25rem);
+  }
+
+  /* --- 見出し --- */
+
+  .masthead { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2rem, 5vw, var(--step-3));
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .mark { color: var(--accent); font-weight: 600; }
+
+  .thesis {
+    max-width: 62ch;
+    color: var(--ink-soft);
+    margin: 0;
+    font-size: var(--step-1);
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+  .thesis strong { color: var(--ink); font-weight: 600; }
+
+  /* --- 作業台 --- */
+
+  .bench {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .counter {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+  }
+
+  /* --- 入力 --- */
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-sunk);
+  }
+
+  .preset {
+    font: inherit;
+    font-size: var(--step--1);
+    font-family: var(--sans);
+    padding: 0.28rem 0.62rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms, background 120ms;
+  }
+  .preset:hover { color: var(--accent); border-color: var(--accent); }
+  .preset[aria-pressed="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .preset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  textarea {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    line-height: 1.6;
+    tab-size: 2;
+    border: 0;
+    resize: vertical;
+    min-height: 22rem;
+    padding: 0.9rem;
+    background: transparent;
+    color: var(--ink);
+    width: 100%;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* --- 判定 --- */
+
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .verdict-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .verdict-text { font-weight: 600; font-size: var(--step-1); font-family: var(--display); letter-spacing: -0.01em; }
+  .verdict-note { color: var(--ink-soft); font-size: var(--step--1); margin-left: auto; text-align: right; }
+
+  .verdict[data-state="pass"] { background: var(--pass-soft); }
+  .verdict[data-state="pass"] .verdict-dot { background: var(--pass); }
+  .verdict[data-state="pass"] .verdict-text { color: var(--pass); }
+  .verdict[data-state="fail"] { background: var(--error-soft); }
+  .verdict[data-state="fail"] .verdict-dot { background: var(--error); }
+  .verdict[data-state="fail"] .verdict-text { color: var(--error); }
+  .verdict[data-state="idle"] { background: var(--surface-sunk); }
+  .verdict[data-state="idle"] .verdict-dot { background: var(--ink-faint); }
+  .verdict[data-state="idle"] .verdict-text { color: var(--ink-soft); }
+
+  /* --- 指摘 --- */
+
+  .findings { padding: 0.9rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .group { display: flex; flex-direction: column; gap: 0.55rem; }
+
+  .group-head { display: flex; flex-direction: column; gap: 0.1rem; }
+  .group-label {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .group-note { font-size: var(--step--1); color: var(--ink-soft); }
+  .group[data-kind="error"] .group-label { color: var(--error); }
+  .group[data-kind="warning"] .group-label { color: var(--warn); }
+
+  /* error は実線、warning は破線。「送れてしまうので気付けない」ことを
+     色ではなく形で示す。色だけだと、どちらも同じ重さに見える。 */
+  .finding {
+    padding: 0.55rem 0 0.55rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .finding[data-kind="error"] { border-left: 3px solid var(--error); background: var(--error-soft); }
+  .finding[data-kind="warning"] { border-left: 3px dashed var(--warn); background: var(--warn-soft); }
+
+  .finding-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+
+  .path {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink);
+    word-break: break-all;
+  }
+
+  .rule-id {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-faint);
+  }
+
+  .finding-message { font-size: var(--step--1); }
+  .finding-hint {
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    padding-left: 0.85rem;
+    border-left: 1px solid var(--rule);
+    text-wrap: pretty;
+  }
+
+  .empty { color: var(--ink-faint); font-size: var(--step--1); padding: 1.5rem 0; text-align: center; }
+
+  /* --- 種別の判定 --- */
+
+  .detect {
+    margin-top: auto;
+    border-top: 1px solid var(--rule);
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: var(--step--1);
+    background: var(--surface-sunk);
+  }
+  .detect-label {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .detect-value { font-weight: 600; }
+  .detect[data-flex="true"] .detect-value { color: var(--error); }
+  .detect[data-flex="false"] .detect-value { color: var(--ink-soft); }
+  .detect-reason { color: var(--ink-soft); font-family: var(--mono); font-size: 0.6875rem; }
+
+  /* --- 読み方 --- */
+
+  .reading {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .card[data-kind="error"] { border-top: 3px solid var(--error); }
+  .card[data-kind="warning"] { border-top: 3px dashed var(--warn); }
+
+  .card h2 {
+    font-family: var(--display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .card[data-kind="error"] h2 { color: var(--error); }
+  .card[data-kind="warning"] h2 { color: var(--warn); }
+  .card p { margin: 0; color: var(--ink-soft); font-size: var(--step--1); text-wrap: pretty; }
+  .card p strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.25rem;
+    color: var(--ink-faint);
+    font-size: var(--step--1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+  }
+  footer a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  footer code { font-family: var(--mono); font-size: 0.6875rem; color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">LINE Messaging API / Flex Message</div>
+    <h1>型では防げない<br>Flex の失敗</h1>
+    <p class="thesis">
+      型は通っても、LINE は <span class="mark">400</span> を返します。しかも失敗は 2 種類あって、
+      <strong>片方はすぐ気付き、もう片方は永久に気付きません。</strong>
+      JSON を貼り替えるか、下の例を選んでください。
+    </p>
+  </header>
+
+  <div class="bench">
+    <section class="panel" aria-label="検査する JSON">
+      <div class="panel-head">
+        <span class="panel-title">送ろうとしているもの</span>
+        <span class="counter" id="size-readout">—</span>
+      </div>
+      <div class="presets" id="presets" role="group" aria-label="例を選ぶ"></div>
+      <textarea id="input" spellcheck="false" aria-label="Flex メッセージの JSON"></textarea>
+    </section>
+
+    <section class="panel" aria-label="検査結果">
+      <div class="panel-head">
+        <span class="panel-title">検査結果</span>
+        <span class="counter" id="counts">—</span>
+      </div>
+      <div class="verdict" id="verdict" data-state="idle" role="status">
+        <span class="verdict-dot" aria-hidden="true"></span>
+        <span class="verdict-text" id="verdict-text">—</span>
+        <span class="verdict-note" id="verdict-note"></span>
+      </div>
+      <div class="findings" id="findings"></div>
+      <div class="detect" id="detect" data-flex="false">
+        <span class="detect-label">looksLikeFlex</span>
+        <span class="detect-value" id="detect-value">—</span>
+        <span class="detect-reason" id="detect-reason"></span>
+      </div>
+    </section>
+  </div>
+
+  <div class="reading">
+    <article class="card" data-kind="error">
+      <h2>error — LINE が受け取らない</h2>
+      <p>
+        送信そのものが失敗し、<code>400</code> が返ります。<strong>直さない選択肢がありません。</strong>
+        未知のプロパティ、必須の欠落、10KB / 50KB の超過、アクションの <code>data</code> が 300 文字を超えたとき。
+      </p>
+    </article>
+    <article class="card" data-kind="warning">
+      <h2>warning — 送信は成功する</h2>
+      <p>
+        LINE は受け取り、配信数も増えます。ただ相手の画面では文字が背景に溶けていたり、画像の場所が空欄になっています。
+        <strong>エラーは返らず、ログにも残りません。</strong>反応が無いという形でしか現れないので、運用していても分かりません。
+      </p>
+    </article>
+  </div>
+
+  <footer>
+    <span>検査しているのは <code>flex-guard</code> のビルド結果そのもので、デモ用の書き直しではありません。</span>
+    <span>許可プロパティの表は LINE 公開の OpenAPI 定義から生成しています。</span>
+    <span>MIT</span>
+  </footer>
+</div>
+
+<script>
+/* __FLEX_GUARD_BUNDLE__ */
+</script>
+
+<script>
+  (() => {
+    const bubble = (extra = {}, bodyExtra = []) => ({
+      type: "flex",
+      altText: "本日のお知らせ",
+      contents: {
+        type: "bubble",
+        size: "mega",
+        body: {
+          type: "box",
+          layout: "vertical",
+          spacing: "md",
+          contents: [
+            { type: "text", text: "本日のお知らせ", weight: "bold", size: "lg" },
+            { type: "text", text: "17時に配信します", wrap: true },
+            ...bodyExtra,
+          ],
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          contents: [{
+            type: "button",
+            style: "primary",
+            action: { type: "postback", label: "詳しく見る", data: "detail" },
+          }],
+        },
+      },
+      ...extra,
+    });
+
+    const withAction = (data) => {
+      const message = bubble();
+      message.contents.footer.contents[0].action.data = data;
+      return message;
+    };
+
+    const PRESETS = [
+      { name: "問題なし", build: () => bubble() },
+      {
+        name: "メタ情報の外し忘れ",
+        build: () => bubble({ appMeta: { tapLimit: 1, group: "a3f" } }),
+      },
+      {
+        name: "動画のサムネイル無し",
+        build: () => bubble({}, [{ type: "video", url: "https://cdn.example.com/spot.mp4" }]),
+      },
+      {
+        name: "data が長すぎる",
+        build: () => withAction(JSON.stringify({ action: "open", label: "詳しく見る", target: "x".repeat(320) })),
+      },
+      {
+        name: "ダークモードで消える",
+        build: () => {
+          const message = bubble();
+          message.contents.body.contents[0].color = "#FFFFFF";
+          message.contents.body.contents[1].color = "#F8F8F8";
+          return message;
+        },
+      },
+      {
+        name: "差し込みで壊れうる",
+        build: () => {
+          const message = bubble();
+          message.contents.body.contents[0].text = "{name} さん、こんにちは";
+          return message;
+        },
+      },
+      {
+        name: "テキストとして送っている",
+        raw: () => JSON.stringify(bubble().contents, null, 2),
+      },
+    ];
+
+    const input = document.getElementById("input");
+    const findingsEl = document.getElementById("findings");
+    const verdict = document.getElementById("verdict");
+    const verdictText = document.getElementById("verdict-text");
+    const verdictNote = document.getElementById("verdict-note");
+    const counts = document.getElementById("counts");
+    const sizeReadout = document.getElementById("size-readout");
+    const detect = document.getElementById("detect");
+    const detectValue = document.getElementById("detect-value");
+    const detectReason = document.getElementById("detect-reason");
+    const presetsEl = document.getElementById("presets");
+
+    const encoder = new TextEncoder();
+
+    PRESETS.forEach((preset, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "preset";
+      button.textContent = preset.name;
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => load(index));
+      presetsEl.append(button);
+    });
+
+    function load(index) {
+      const preset = PRESETS[index];
+      input.value = preset.raw ? preset.raw() : JSON.stringify(preset.build(), null, 2);
+      [...presetsEl.children].forEach((button, i) => {
+        button.setAttribute("aria-pressed", String(i === index));
+      });
+      run();
+    }
+
+    function clearActivePreset() {
+      [...presetsEl.children].forEach((button) => button.setAttribute("aria-pressed", "false"));
+    }
+
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderGroup(kind, label, note, items) {
+      const group = element("section", "group");
+      group.dataset.kind = kind;
+      const head = element("div", "group-head");
+      head.append(element("span", "group-label", `${label} — ${items.length}`));
+      head.append(element("span", "group-note", note));
+      group.append(head);
+
+      for (const finding of items) {
+        const row = element("article", "finding");
+        row.dataset.kind = kind;
+        const top = element("div", "finding-top");
+        top.append(element("span", "path", finding.path));
+        top.append(element("span", "rule-id", finding.rule));
+        row.append(top);
+        row.append(element("p", "finding-message", finding.message));
+        if (finding.hint) row.append(element("p", "finding-hint", finding.hint));
+        group.append(row);
+      }
+      return group;
+    }
+
+    function setVerdict(state, text, note) {
+      verdict.dataset.state = state;
+      verdictText.textContent = text;
+      verdictNote.textContent = note;
+    }
+
+    function run() {
+      const raw = input.value;
+      sizeReadout.textContent = raw.trim() === ""
+        ? "—"
+        : `${encoder.encode(raw).length.toLocaleString()} バイト`;
+
+      const detected = FlexGuard.looksLikeFlex(raw);
+      detect.dataset.flex = String(detected.looksLikeFlex);
+      detectValue.textContent = detected.looksLikeFlex
+        ? "テキストとして送ると JSON がそのまま届きます"
+        : "テキストとして送っても問題ありません";
+      detectReason.textContent = detected.reason;
+
+      findingsEl.replaceChildren();
+
+      if (raw.trim() === "") {
+        setVerdict("idle", "—", "");
+        counts.textContent = "—";
+        findingsEl.append(element("p", "empty", "JSON を貼るか、上の例を選んでください"));
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (error) {
+        setVerdict("fail", "JSON として読めません", "");
+        counts.textContent = "—";
+        findingsEl.append(element("p", "empty", String(error.message)));
+        return;
+      }
+
+      const result = FlexGuard.validate(parsed);
+      counts.textContent = `error ${result.errors.length} / warning ${result.warnings.length}`;
+
+      if (result.ok) {
+        setVerdict(
+          "pass",
+          "LINE は受け取ります",
+          result.warnings.length > 0 ? "そして、この先は誰も教えてくれません" : "",
+        );
+      } else {
+        setVerdict("fail", "LINE は受け取りません", "送信の時点で失敗します");
+      }
+
+      if (result.errors.length > 0) {
+        findingsEl.append(renderGroup(
+          "error",
+          "error",
+          "送信そのものが失敗します。すぐ気付きます。",
+          result.errors,
+        ));
+      }
+      if (result.warnings.length > 0) {
+        findingsEl.append(renderGroup(
+          "warning",
+          "warning",
+          "送信は成功します。相手の画面だけが違い、あなたには何も返りません。",
+          result.warnings,
+        ));
+      }
+      if (result.findings.length === 0) {
+        findingsEl.append(element("p", "empty", "指摘はありません"));
+      }
+    }
+
+    let timer;
+    input.addEventListener("input", () => {
+      clearActivePreset();
+      clearTimeout(timer);
+      timer = setTimeout(run, 180);
+    });
+
+    load(1);
+  })();
+</script>

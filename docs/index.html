@@ -1,0 +1,1505 @@
+<title>flex-guard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* 校正刷りの赤入れを下敷きにしている。冷たい紙の地、校正鉛筆の青、
+     茜と黄土の指摘。地の灰は青緑に寄せて、選んだ色であることを示す。 */
+  :root {
+    --ground: #EDEFEA;
+    --surface: #FCFCFA;
+    --surface-sunk: #E4E7DF;
+    --ink: #191D18;
+    --ink-soft: #5C645B;
+    --ink-faint: #8B928A;
+    --rule: #D3D8CD;
+    --accent: #1C4E93;
+    --accent-soft: #E3EAF5;
+    --error: #A32A1C;
+    --error-soft: #F7E7E4;
+    --warn: #8A6510;
+    --warn-soft: #F6EEDC;
+    --pass: #2C6B4A;
+    --pass-soft: #E2EFE7;
+
+    --step--1: 0.8125rem;
+    --step-0: 0.9375rem;
+    --step-1: 1.125rem;
+    --step-2: 1.5rem;
+    --step-3: 2.25rem;
+
+    --sans: "Public Sans", ui-sans-serif, system-ui, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    --display: "Familjen Grotesk", "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #151813;
+      --surface: #1D211B;
+      --surface-sunk: #12150F;
+      --ink: #E4E7DF;
+      --ink-soft: #9AA196;
+      --ink-faint: #6E756B;
+      --rule: #2F342C;
+      --accent: #8DB1E9;
+      --accent-soft: #1C2635;
+      --error: #E88F80;
+      --error-soft: #33201C;
+      --warn: #D8B460;
+      --warn-soft: #2E2716;
+      --pass: #7FC79E;
+      --pass-soft: #17271E;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #151813;
+    --surface: #1D211B;
+    --surface-sunk: #12150F;
+    --ink: #E4E7DF;
+    --ink-soft: #9AA196;
+    --ink-faint: #6E756B;
+    --rule: #2F342C;
+    --accent: #8DB1E9;
+    --accent-soft: #1C2635;
+    --error: #E88F80;
+    --error-soft: #33201C;
+    --warn: #D8B460;
+    --warn-soft: #2E2716;
+    --pass: #7FC79E;
+    --pass-soft: #17271E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.5rem, 3vw, 2.25rem);
+  }
+
+  /* --- 見出し --- */
+
+  .masthead { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2rem, 5vw, var(--step-3));
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .mark { color: var(--accent); font-weight: 600; }
+
+  .thesis {
+    max-width: 62ch;
+    color: var(--ink-soft);
+    margin: 0;
+    font-size: var(--step-1);
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+  .thesis strong { color: var(--ink); font-weight: 600; }
+
+  /* --- 作業台 --- */
+
+  .bench {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .counter {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+  }
+
+  /* --- 入力 --- */
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-sunk);
+  }
+
+  .preset {
+    font: inherit;
+    font-size: var(--step--1);
+    font-family: var(--sans);
+    padding: 0.28rem 0.62rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: color 120ms, border-color 120ms, background 120ms;
+  }
+  .preset:hover { color: var(--accent); border-color: var(--accent); }
+  .preset[aria-pressed="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .preset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  textarea {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    line-height: 1.6;
+    tab-size: 2;
+    border: 0;
+    resize: vertical;
+    min-height: 22rem;
+    padding: 0.9rem;
+    background: transparent;
+    color: var(--ink);
+    width: 100%;
+  }
+  textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* --- 判定 --- */
+
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .verdict-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .verdict-text { font-weight: 600; font-size: var(--step-1); font-family: var(--display); letter-spacing: -0.01em; }
+  .verdict-note { color: var(--ink-soft); font-size: var(--step--1); margin-left: auto; text-align: right; }
+
+  .verdict[data-state="pass"] { background: var(--pass-soft); }
+  .verdict[data-state="pass"] .verdict-dot { background: var(--pass); }
+  .verdict[data-state="pass"] .verdict-text { color: var(--pass); }
+  .verdict[data-state="fail"] { background: var(--error-soft); }
+  .verdict[data-state="fail"] .verdict-dot { background: var(--error); }
+  .verdict[data-state="fail"] .verdict-text { color: var(--error); }
+  .verdict[data-state="idle"] { background: var(--surface-sunk); }
+  .verdict[data-state="idle"] .verdict-dot { background: var(--ink-faint); }
+  .verdict[data-state="idle"] .verdict-text { color: var(--ink-soft); }
+
+  /* --- 指摘 --- */
+
+  .findings { padding: 0.9rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .group { display: flex; flex-direction: column; gap: 0.55rem; }
+
+  .group-head { display: flex; flex-direction: column; gap: 0.1rem; }
+  .group-label {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .group-note { font-size: var(--step--1); color: var(--ink-soft); }
+  .group[data-kind="error"] .group-label { color: var(--error); }
+  .group[data-kind="warning"] .group-label { color: var(--warn); }
+
+  /* error は実線、warning は破線。「送れてしまうので気付けない」ことを
+     色ではなく形で示す。色だけだと、どちらも同じ重さに見える。 */
+  .finding {
+    padding: 0.55rem 0 0.55rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .finding[data-kind="error"] { border-left: 3px solid var(--error); background: var(--error-soft); }
+  .finding[data-kind="warning"] { border-left: 3px dashed var(--warn); background: var(--warn-soft); }
+
+  .finding-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+
+  .path {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    font-weight: 500;
+    color: var(--ink);
+    word-break: break-all;
+  }
+
+  .rule-id {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-faint);
+  }
+
+  .finding-message { font-size: var(--step--1); }
+  .finding-hint {
+    font-size: var(--step--1);
+    color: var(--ink-soft);
+    padding-left: 0.85rem;
+    border-left: 1px solid var(--rule);
+    text-wrap: pretty;
+  }
+
+  .empty { color: var(--ink-faint); font-size: var(--step--1); padding: 1.5rem 0; text-align: center; }
+
+  /* --- 種別の判定 --- */
+
+  .detect {
+    margin-top: auto;
+    border-top: 1px solid var(--rule);
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: var(--step--1);
+    background: var(--surface-sunk);
+  }
+  .detect-label {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .detect-value { font-weight: 600; }
+  .detect[data-flex="true"] .detect-value { color: var(--error); }
+  .detect[data-flex="false"] .detect-value { color: var(--ink-soft); }
+  .detect-reason { color: var(--ink-soft); font-family: var(--mono); font-size: 0.6875rem; }
+
+  /* --- 読み方 --- */
+
+  .reading {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .card[data-kind="error"] { border-top: 3px solid var(--error); }
+  .card[data-kind="warning"] { border-top: 3px dashed var(--warn); }
+
+  .card h2 {
+    font-family: var(--display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .card[data-kind="error"] h2 { color: var(--error); }
+  .card[data-kind="warning"] h2 { color: var(--warn); }
+  .card p { margin: 0; color: var(--ink-soft); font-size: var(--step--1); text-wrap: pretty; }
+  .card p strong { color: var(--ink); font-weight: 600; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.25rem;
+    color: var(--ink-faint);
+    font-size: var(--step--1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+  }
+  footer a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  footer code { font-family: var(--mono); font-size: 0.6875rem; color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">LINE Messaging API / Flex Message</div>
+    <h1>型では防げない<br>Flex の失敗</h1>
+    <p class="thesis">
+      型は通っても、LINE は <span class="mark">400</span> を返します。しかも失敗は 2 種類あって、
+      <strong>片方はすぐ気付き、もう片方は永久に気付きません。</strong>
+      JSON を貼り替えるか、下の例を選んでください。
+    </p>
+  </header>
+
+  <div class="bench">
+    <section class="panel" aria-label="検査する JSON">
+      <div class="panel-head">
+        <span class="panel-title">送ろうとしているもの</span>
+        <span class="counter" id="size-readout">—</span>
+      </div>
+      <div class="presets" id="presets" role="group" aria-label="例を選ぶ"></div>
+      <textarea id="input" spellcheck="false" aria-label="Flex メッセージの JSON"></textarea>
+    </section>
+
+    <section class="panel" aria-label="検査結果">
+      <div class="panel-head">
+        <span class="panel-title">検査結果</span>
+        <span class="counter" id="counts">—</span>
+      </div>
+      <div class="verdict" id="verdict" data-state="idle" role="status">
+        <span class="verdict-dot" aria-hidden="true"></span>
+        <span class="verdict-text" id="verdict-text">—</span>
+        <span class="verdict-note" id="verdict-note"></span>
+      </div>
+      <div class="findings" id="findings"></div>
+      <div class="detect" id="detect" data-flex="false">
+        <span class="detect-label">looksLikeFlex</span>
+        <span class="detect-value" id="detect-value">—</span>
+        <span class="detect-reason" id="detect-reason"></span>
+      </div>
+    </section>
+  </div>
+
+  <div class="reading">
+    <article class="card" data-kind="error">
+      <h2>error — LINE が受け取らない</h2>
+      <p>
+        送信そのものが失敗し、<code>400</code> が返ります。<strong>直さない選択肢がありません。</strong>
+        未知のプロパティ、必須の欠落、10KB / 50KB の超過、アクションの <code>data</code> が 300 文字を超えたとき。
+      </p>
+    </article>
+    <article class="card" data-kind="warning">
+      <h2>warning — 送信は成功する</h2>
+      <p>
+        LINE は受け取り、配信数も増えます。ただ相手の画面では文字が背景に溶けていたり、画像の場所が空欄になっています。
+        <strong>エラーは返らず、ログにも残りません。</strong>反応が無いという形でしか現れないので、運用していても分かりません。
+      </p>
+    </article>
+  </div>
+
+  <footer>
+    <span>検査しているのは <code>flex-guard</code> のビルド結果そのもので、デモ用の書き直しではありません。</span>
+    <span>許可プロパティの表は LINE 公開の OpenAPI 定義から生成しています。</span>
+    <span>MIT</span>
+  </footer>
+</div>
+
+<script>
+// flex-guard のビルド結果をそのまま束ねたもの。デモ用の書き直しではない。
+// 生成: npm run demo:build
+const FlexGuard = (() => {
+// ---- spec.js ----
+// 自動生成。手で編集しないこと。
+//
+//   npm run spec:generate
+//
+// 出典   https://raw.githubusercontent.com/line/line-openapi/main/messaging-api.yml
+// 取得日 2026-09-01
+// sha256 0227978ce1b3133e20da034fc33a9241000619ae4fea2fda7b61983abf79577a
+//
+// この表にあるプロパティ名は LINE 自身の定義から起こしている。手で
+// 書き写していないので、綴り違いによる誤検出は起きない。
+/** Flex メッセージ本体 (altText と contents) */
+const FLEX_MESSAGE = {
+    "schema": "FlexMessage",
+    "properties": [
+        "altText",
+        "contents",
+        "quickReply",
+        "sender",
+        "type"
+    ],
+    "required": [
+        "altText",
+        "contents",
+        "type"
+    ],
+    "limits": {},
+    "enums": {}
+};
+/** bubble と carousel */
+const FLEX_CONTAINERS = {
+    "bubble": {
+        schema: "FlexBubble",
+        properties: ["action", "body", "direction", "footer", "header", "hero", "size", "styles", "type"],
+        required: ["type"],
+        limits: {},
+        enums: { "direction": ["ltr", "rtl"], "size": ["nano", "micro", "deca", "hecto", "kilo", "mega", "giga"] },
+    },
+    "carousel": {
+        schema: "FlexCarousel",
+        properties: ["contents", "type"],
+        required: ["contents", "type"],
+        limits: {},
+        enums: {},
+    },
+};
+/** box / text / image / video など */
+const FLEX_COMPONENTS = {
+    "box": {
+        schema: "FlexBox",
+        properties: ["action", "alignItems", "background", "backgroundColor", "borderColor", "borderWidth", "contents", "cornerRadius", "flex", "height", "justifyContent", "layout", "margin", "maxHeight", "maxWidth", "offsetBottom", "offsetEnd", "offsetStart", "offsetTop", "paddingAll", "paddingBottom", "paddingEnd", "paddingStart", "paddingTop", "position", "spacing", "type", "width"],
+        required: ["contents", "layout", "type"],
+        limits: {},
+        enums: { "layout": ["horizontal", "vertical", "baseline"], "position": ["relative", "absolute"], "justifyContent": ["center", "flex-start", "flex-end", "space-between", "space-around", "space-evenly"], "alignItems": ["center", "flex-start", "flex-end"] },
+    },
+    "button": {
+        schema: "FlexButton",
+        properties: ["action", "adjustMode", "color", "flex", "gravity", "height", "margin", "offsetBottom", "offsetEnd", "offsetStart", "offsetTop", "position", "scaling", "style", "type"],
+        required: ["action", "type"],
+        limits: {},
+        enums: { "style": ["primary", "secondary", "link"], "gravity": ["top", "bottom", "center"], "position": ["relative", "absolute"], "height": ["md", "sm"], "adjustMode": ["shrink-to-fit"] },
+    },
+    "image": {
+        schema: "FlexImage",
+        properties: ["action", "align", "animated", "aspectMode", "aspectRatio", "backgroundColor", "flex", "gravity", "margin", "offsetBottom", "offsetEnd", "offsetStart", "offsetTop", "position", "size", "type", "url"],
+        required: ["type", "url"],
+        limits: {},
+        enums: { "position": ["relative", "absolute"], "align": ["start", "end", "center"], "gravity": ["top", "bottom", "center"], "aspectMode": ["fit", "cover"] },
+    },
+    "video": {
+        schema: "FlexVideo",
+        properties: ["action", "altContent", "aspectRatio", "previewUrl", "type", "url"],
+        required: ["altContent", "previewUrl", "type", "url"],
+        limits: {},
+        enums: {},
+    },
+    "icon": {
+        schema: "FlexIcon",
+        properties: ["aspectRatio", "margin", "offsetBottom", "offsetEnd", "offsetStart", "offsetTop", "position", "scaling", "size", "type", "url"],
+        required: ["type", "url"],
+        limits: {},
+        enums: { "position": ["relative", "absolute"] },
+    },
+    "text": {
+        schema: "FlexText",
+        properties: ["action", "adjustMode", "align", "color", "contents", "decoration", "flex", "gravity", "lineSpacing", "margin", "maxLines", "offsetBottom", "offsetEnd", "offsetStart", "offsetTop", "position", "scaling", "size", "style", "text", "type", "weight", "wrap"],
+        required: ["type"],
+        limits: {},
+        enums: { "align": ["start", "end", "center"], "gravity": ["top", "bottom", "center"], "weight": ["regular", "bold"], "style": ["normal", "italic"], "decoration": ["none", "underline", "line-through"], "position": ["relative", "absolute"], "adjustMode": ["shrink-to-fit"] },
+    },
+    "span": {
+        schema: "FlexSpan",
+        properties: ["color", "decoration", "size", "style", "text", "type", "weight"],
+        required: ["type"],
+        limits: {},
+        enums: { "weight": ["regular", "bold"], "style": ["normal", "italic"], "decoration": ["none", "underline", "line-through"] },
+    },
+    "separator": {
+        schema: "FlexSeparator",
+        properties: ["color", "margin", "type"],
+        required: ["type"],
+        limits: {},
+        enums: {},
+    },
+    "filler": {
+        schema: "FlexFiller",
+        properties: ["flex", "type"],
+        required: ["type"],
+        limits: {},
+        enums: {},
+    },
+};
+/** postback / uri / message など */
+const ACTIONS = {
+    "camera": {
+        schema: "CameraAction",
+        properties: ["label", "type"],
+        required: [],
+        limits: {},
+        enums: {},
+    },
+    "cameraRoll": {
+        schema: "CameraRollAction",
+        properties: ["label", "type"],
+        required: [],
+        limits: {},
+        enums: {},
+    },
+    "clipboard": {
+        schema: "ClipboardAction",
+        properties: ["clipboardText", "label", "type"],
+        required: ["clipboardText"],
+        limits: { "clipboardText": 1000 },
+        enums: {},
+    },
+    "datetimepicker": {
+        schema: "DatetimePickerAction",
+        properties: ["data", "initial", "label", "max", "min", "mode", "type"],
+        required: [],
+        limits: { "data": 300 },
+        enums: { "mode": ["date", "time", "datetime"] },
+    },
+    "location": {
+        schema: "LocationAction",
+        properties: ["label", "type"],
+        required: [],
+        limits: {},
+        enums: {},
+    },
+    "message": {
+        schema: "MessageAction",
+        properties: ["label", "text", "type"],
+        required: [],
+        limits: {},
+        enums: {},
+    },
+    "postback": {
+        schema: "PostbackAction",
+        properties: ["data", "displayText", "fillInText", "inputOption", "label", "text", "type"],
+        required: [],
+        limits: { "data": 300 },
+        enums: { "inputOption": ["closeRichMenu", "openRichMenu", "openKeyboard", "openVoice"] },
+    },
+    "richmenuswitch": {
+        schema: "RichMenuSwitchAction",
+        properties: ["data", "label", "richMenuAliasId", "type"],
+        required: [],
+        limits: { "data": 300, "richMenuAliasId": 32 },
+        enums: {},
+    },
+    "uri": {
+        schema: "URIAction",
+        properties: ["altUri", "label", "type", "uri"],
+        required: [],
+        limits: {},
+        enums: {},
+    },
+};
+
+// ---- walk.js ----
+// Flex メッセージの木を辿る。
+//
+// 子を持つ場所を型ごとに明示している。「type を持つオブジェクトなら全部
+// 潜る」という書き方の方が短いが、それだと styles や background のような
+// 「部品ではないオブジェクト」まで部品として扱ってしまい、正しい JSON に
+// 対して未知の型だと言い出す。誤検出は見逃しより高くつくので、辿る場所は
+// 明示する。
+
+/** その型が持つ「部品が入るプロパティ」。ここに無いものは辿らない。 */
+const COMPONENT_CHILDREN = {
+    bubble: ["header", "hero", "body", "footer"],
+    box: ["contents"],
+    // text.contents は span の配列。span も部品として同じ表で検査できる。
+    text: ["contents"],
+};
+/** carousel だけが container を子に持つ。 */
+const CONTAINER_CHILDREN = {
+    carousel: ["contents"],
+};
+const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+const typeOf = (node) => typeof node["type"] === "string" ? node["type"] : undefined;
+/**
+ * 入口の種類を判定する。
+ *
+ * `{type:"flex", altText, contents}` を渡されることもあれば、中身の
+ * bubble だけを渡されることもある。どちらでも検査できる方が使いやすい。
+ */
+function rootKind(value) {
+    if (!isObject(value))
+        return undefined;
+    const type = typeOf(value);
+    if (type === "flex")
+        return "message";
+    if (type !== undefined && type in FLEX_CONTAINERS)
+        return "container";
+    return undefined;
+}
+/**
+ * 木を深さ優先で辿る。訪れた順に返す。
+ *
+ * 一度見たオブジェクトは辿り直さない。組み立ての途中で同じオブジェクトを
+ * 2 か所に入れると木ではなくなり、素直に再帰すると戻ってこられなくなる。
+ */
+function* walk(root) {
+    const kind = rootKind(root);
+    if (kind === undefined || !isObject(root))
+        return;
+    const seen = new WeakSet();
+    if (kind === "message") {
+        yield { kind: "message", node: root, path: "$", type: typeOf(root) };
+        seen.add(root);
+        const contents = root["contents"];
+        if (isObject(contents))
+            yield* visit(contents, "$.contents", "container", seen);
+        return;
+    }
+    yield* visit(root, "$", "container", seen);
+}
+function* visit(node, path, kind, seen) {
+    if (seen.has(node))
+        return;
+    seen.add(node);
+    const type = typeOf(node);
+    yield { kind, node, path, type };
+    // action はどの部品にも付きうるので、型ではなくキーで拾う。
+    const action = node["action"];
+    if (isObject(action)) {
+        yield* visit(action, `${path}.action`, "action", seen);
+    }
+    if (kind === "action" || type === undefined)
+        return;
+    for (const key of CONTAINER_CHILDREN[type] ?? []) {
+        yield* children(node[key], `${path}.${key}`, "container", seen);
+    }
+    for (const key of COMPONENT_CHILDREN[type] ?? []) {
+        yield* children(node[key], `${path}.${key}`, "component", seen);
+    }
+}
+function* children(value, path, kind, seen) {
+    if (Array.isArray(value)) {
+        for (const [index, item] of value.entries()) {
+            if (isObject(item))
+                yield* visit(item, `${path}[${index}]`, kind, seen);
+        }
+        return;
+    }
+    if (isObject(value))
+        yield* visit(value, path, kind, seen);
+}
+/** その訪問に対応する仕様表を返す。未知の型なら undefined。 */
+function specFor(visit) {
+    if (visit.type === undefined)
+        return undefined;
+    if (visit.kind === "container")
+        return FLEX_CONTAINERS[visit.type];
+    if (visit.kind === "component")
+        return FLEX_COMPONENTS[visit.type];
+    return undefined;
+}
+
+// ---- detect.js ----
+// 「これはテキストではない」の判定。
+//
+// 他のルールと違い、これは Flex の中身ではなく **送ろうとしている種別**を
+// 疑う。Flex を保存して後から送る作りでは、種別と中身が食い違うことが
+// 起きる。種別が text のまま Flex の JSON を送ると、LINE はそれを文字列
+// として扱い、**受け取った人の画面に JSON がそのまま表示される**。
+//
+// この事故はエラーにならない。送信は成功し、配信数も増える。画面の
+// プレビューは種別ではなく中身を見て描いていることが多いので、管理画面
+// では正しく絵で出る。**送った側から見て、すべて正常に見える。**
+//
+// だから送る直前の一行に置く価値がある。
+const NOT_FLEX = (reason) => ({
+    looksLikeFlex: false,
+    containerType: undefined,
+    reason,
+});
+/**
+ * テキストとして送ろうとしている文字列が、実は Flex ではないかを見る。
+ *
+ * 判定は「JSON として読めて、Flex の container の形をしているか」に絞る。
+ * 先頭が `{` かどうかだけで見ると、`[` で始まる配列を取りこぼす。逆に
+ * 緩くしすぎると、`[FORM_1]` のような角括弧で始まる普通の本文を誤判定する。
+ */
+function looksLikeFlex(text) {
+    const trimmed = text.trim();
+    if (trimmed === "")
+        return NOT_FLEX("空文字");
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        return NOT_FLEX("JSON の開始文字で始まっていない");
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(trimmed);
+    }
+    catch {
+        // 角括弧で始まる普通の本文はここに落ちる。テキストとして正しい。
+        return NOT_FLEX("JSON として読めない");
+    }
+    const candidates = Array.isArray(parsed) ? parsed : [parsed];
+    for (const item of candidates) {
+        if (typeof item !== "object" || item === null)
+            continue;
+        const record = item;
+        const type = record["type"];
+        if (type === "bubble" || type === "carousel") {
+            return {
+                looksLikeFlex: true,
+                containerType: type,
+                reason: `type が "${type}"`,
+            };
+        }
+        // {type:"flex", contents:{...}} の形で丸ごと入っていることもある。
+        if (type === "flex" && typeof record["contents"] === "object") {
+            const contents = record["contents"];
+            const inner = contents === null ? undefined : contents["type"];
+            return {
+                looksLikeFlex: true,
+                containerType: typeof inner === "string" ? inner : undefined,
+                reason: 'type が "flex"',
+            };
+        }
+    }
+    return NOT_FLEX("Flex の container が見当たらない");
+}
+
+// ---- rules/schema.js ----
+// 構造の検査。すべて error にしている。
+//
+// ここで挙がるものは LINE API が 400 を返す。送信そのものが失敗するので、
+// 直さない選択肢が無い。
+
+
+const REFERENCE = "https://developers.line.biz/en/reference/messaging-api/#flex-message";
+function tableFor(visit) {
+    if (visit.kind === "message")
+        return FLEX_MESSAGE;
+    if (visit.kind === "action")
+        return visit.type === undefined ? undefined : ACTIONS[visit.type];
+    return specFor(visit);
+}
+function known(kind) {
+    if (kind === "container")
+        return Object.keys(FLEX_CONTAINERS);
+    if (kind === "component")
+        return Object.keys(FLEX_COMPONENTS);
+    if (kind === "action")
+        return Object.keys(ACTIONS);
+    return ["flex"];
+}
+/**
+ * 未知のプロパティ。
+ *
+ * LINE API は知らないキーがあるとメッセージ全体を拒否する。これが起きる
+ * のは、独自のメタ情報を JSON に持たせている場合が多い。タップ回数や
+ * 内部 ID を content に載せて、送信の直前に取り除く設計にしていると、
+ * 送信経路を1つ増やしたときに取り除き忘れる。
+ */
+function unknownProperty(context) {
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        const spec = tableFor(visit);
+        if (!spec)
+            continue;
+        for (const key of Object.keys(visit.node)) {
+            if (spec.properties.includes(key))
+                continue;
+            findings.push({
+                rule: "schema/unknown-property",
+                severity: "error",
+                path: `${visit.path}.${key}`,
+                message: `${spec.schema} が知らないプロパティ "${key}" があります`,
+                hint: "LINE は未知のプロパティを含むメッセージを受け取りません。独自のメタ情報を"
+                    + "載せているなら、送信の直前に取り除いてください。送信経路が複数あるなら全部です。",
+                spec: REFERENCE,
+            });
+        }
+    }
+    return findings;
+}
+/** 必須プロパティの欠落。altText や video の previewUrl はここで挙がる。 */
+function missingRequired(context) {
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        const spec = tableFor(visit);
+        if (!spec)
+            continue;
+        for (const key of spec.required) {
+            if (key in visit.node && visit.node[key] !== undefined)
+                continue;
+            findings.push({
+                rule: "schema/missing-required",
+                severity: "error",
+                path: `${visit.path}.${key}`,
+                message: `${spec.schema} に必須の "${key}" がありません`,
+                hint: hintForRequired(spec.schema, key),
+                spec: REFERENCE,
+            });
+        }
+    }
+    return findings;
+}
+function hintForRequired(schema, key) {
+    if (schema === "FlexMessage" && key === "altText") {
+        return "PC 版と通知欄に出る文字です。無いと送信できません。";
+    }
+    if (schema === "FlexVideo" && key === "previewUrl") {
+        return "サムネイル画像の URL です。用意できない動画は送らないか、先頭フレームから生成してください。";
+    }
+    if (schema === "FlexVideo" && key === "altContent") {
+        return "動画に対応していない LINE で代わりに出す画像です。無いとその端末で何も出ません。";
+    }
+    return `${schema} には ${key} が要ります。無いと LINE がメッセージ全体を拒否します。`;
+}
+/** type の値が仕様に無い。綴り違いのほか、独自の型を混ぜている場合に出る。 */
+function unknownType(context) {
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        if (visit.kind === "message")
+            continue;
+        if (visit.type !== undefined && tableFor(visit))
+            continue;
+        findings.push({
+            rule: "schema/unknown-type",
+            severity: "error",
+            path: `${visit.path}.type`,
+            message: visit.type === undefined
+                ? "type がありません"
+                : `"${visit.type}" は ${visit.kind} の型として仕様にありません`,
+            hint: `使えるのは ${known(visit.kind).join(" / ")} です。`,
+            spec: REFERENCE,
+        });
+    }
+    return findings;
+}
+/** enum に無い値。size に "large" と書くような取り違えを拾う。 */
+function invalidEnum(context) {
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        const spec = tableFor(visit);
+        if (!spec)
+            continue;
+        for (const [key, allowed] of Object.entries(spec.enums)) {
+            const value = visit.node[key];
+            if (typeof value !== "string" || allowed.includes(value))
+                continue;
+            findings.push({
+                rule: "schema/invalid-enum",
+                severity: "error",
+                path: `${visit.path}.${key}`,
+                message: `"${value}" は ${spec.schema}.${key} に使えません`,
+                hint: `使えるのは ${allowed.join(" / ")} です。`,
+                spec: REFERENCE,
+            });
+        }
+    }
+    return findings;
+}
+
+// ---- rules/size.js ----
+// 大きさの検査。
+//
+// ここが型検査では絶対に届かない領域である。JSON にしてバイト数を数える
+// まで分からないので、コンパイル時には何も言えない。そして超えたときは
+// 送信が失敗する。
+
+
+// 出典: LINE Engineering "Introducing Flex Message"
+// https://engineering.linecorp.com/en/blog/introducing-flex-message-a-new-message-type-for-line-messaging-api/
+const BUBBLE_MAX_BYTES = 10 * 1024;
+const CAROUSEL_MAX_BYTES = 50 * 1024;
+const SIZE_REFERENCE = "https://engineering.linecorp.com/en/blog/introducing-flex-message-a-new-message-type-for-line-messaging-api/";
+// TextEncoder を使うのは、Node とブラウザの両方で動かすため。Buffer は
+// Node にしかない。上限はバイト数で決まっており、日本語は 1 文字 3 バイト
+// なので、文字数で数えると 3 倍近くずれる。
+const encoder = new TextEncoder();
+const bytes = (value) => encoder.encode(JSON.stringify(value) ?? "").length;
+const kb = (n) => `${(n / 1024).toFixed(1)}KB`;
+/**
+ * bubble は 10KB、carousel は 50KB まで。
+ *
+ * 画像を data URI で埋めたり、長い本文を入れたときに超える。日本語は
+ * 1文字 3 バイトなので、見た目の文字数より早く上限に届く。
+ */
+function containerTooLarge(context) {
+    const message = context.message;
+    const container = rootKind(message) === "message" && message ? message["contents"] : message;
+    if (typeof container !== "object" || container === null)
+        return [];
+    const type = container["type"];
+    const limit = type === "carousel" ? CAROUSEL_MAX_BYTES : BUBBLE_MAX_BYTES;
+    const actual = bytes(container);
+    if (actual <= limit)
+        return [];
+    return [
+        {
+            rule: type === "carousel" ? "size/carousel-too-large" : "size/bubble-too-large",
+            severity: "error",
+            path: "$.contents",
+            message: `${String(type)} が ${kb(limit)} を超えています (${kb(actual)})`,
+            hint: "画像を data URI で埋め込んでいませんか。URL にすると大きく減ります。"
+                + " 日本語は 1 文字 3 バイトなので、本文の長さも見た目より効きます。",
+            spec: SIZE_REFERENCE,
+        },
+    ];
+}
+/**
+ * アクションの data が上限を超えている。
+ *
+ * 超えると LINE に拒否されるが、**押しても何も起きないという形で現れる**
+ * ことがある。動かないのに例外も出ないので、原因に辿り着きにくい。
+ *
+ * 上限は postback / datetimepicker / richmenuswitch のいずれも 300。
+ * 仕様表から読むので、ここに数値を書かない。
+ */
+function actionDataTooLong(context) {
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        if (visit.kind !== "action" || visit.type === undefined)
+            continue;
+        const spec = ACTIONS[visit.type];
+        if (!spec)
+            continue;
+        for (const [key, limit] of Object.entries(spec.limits)) {
+            const value = visit.node[key];
+            if (typeof value !== "string" || value.length <= limit)
+                continue;
+            findings.push({
+                rule: "action/data-too-long",
+                severity: "error",
+                path: `${visit.path}.${key}`,
+                message: `${spec.schema}.${key} が ${limit} 文字を超えています (${value.length})`,
+                hint: "アクションの中身をそのまま載せていませんか。識別子だけを入れて、"
+                    + "実体は送信ログなど別の場所から引き直す形にすると、上限に当たらなくなります。",
+                spec: "https://developers.line.biz/en/reference/messaging-api/#action-objects",
+            });
+        }
+    }
+    return findings;
+}
+
+// ---- rules/render.js ----
+// 見え方の検査。すべて warning にしている。
+//
+// ここが本題である。挙がるものは全部「送信は成功する」。LINE は受け取り、
+// 相手にも届く。ただし相手の画面では意図と違って見える。
+//
+// 送った側にエラーは返らない。ログにも残らない。相手からの反応が無い、
+// という形でしか現れないので、**運用していても気付けない**。だから送る前に
+// 見るしかない。
+
+/** #FFF / #FFFFFF / #FFFFFFFF から明度を出す。色として読めなければ undefined。 */
+function luminance(color) {
+    if (typeof color !== "string")
+        return undefined;
+    const hex = color.trim().replace(/^#/, "");
+    const short = hex.length === 3 || hex.length === 4;
+    const full = hex.length === 6 || hex.length === 8;
+    if (!short && !full)
+        return undefined;
+    if (!/^[0-9a-fA-F]+$/.test(hex))
+        return undefined;
+    const part = (index) => {
+        const raw = short
+            ? hex[index].repeat(2)
+            : hex.slice(index * 2, index * 2 + 2);
+        return Number.parseInt(raw, 16) / 255;
+    };
+    // ITU-R BT.709 の輝度。厳密な知覚量ではないが、白に近いかの判定には足りる。
+    return 0.2126 * part(0) + 0.7152 * part(1) + 0.0722 * part(2);
+}
+/** 背景色が明示されているか。されていれば自動調整の話ではなくなる。 */
+const hasOwnBackground = (node) => typeof node["backgroundColor"] === "string" || isObject(node["background"]);
+/**
+ * ダークモードで読めなくなる文字色。
+ *
+ * LINE は既定の文字色を背景に合わせて自動調整する。しかし色を明示すると
+ * その調整は効かなくなる。明るい画面で作って白に近い色を指定すると、
+ * 相手がダークモードのとき背景に溶ける。
+ *
+ * 背景色を自分で指定している場合は、意図した組み合わせと見て黙る。
+ */
+function darkModeInvisible(context) {
+    const findings = [];
+    const backgrounds = [];
+    for (const visit of walk(context.message)) {
+        if (visit.kind === "component" && hasOwnBackground(visit.node)) {
+            backgrounds.push(true);
+        }
+        if (visit.type !== "text" && visit.type !== "span")
+            continue;
+        const level = luminance(visit.node["color"]);
+        if (level === undefined || level < 0.85)
+            continue;
+        if (backgrounds.length > 0)
+            continue;
+        findings.push({
+            rule: "render/dark-mode-invisible",
+            severity: "warning",
+            path: `${visit.path}.color`,
+            message: `白に近い文字色 (${String(visit.node["color"])}) を指定しています`,
+            hint: "LINE は既定の文字色だけを背景に合わせて調整します。色を明示するとその調整は"
+                + "効かないので、相手がダークモードのとき背景に溶けます。色の指定を外すか、"
+                + "同じ場所に背景色を指定してください。",
+        });
+    }
+    return findings;
+}
+/** 中身の無い箱。場所は取るのに何も出ないので、余白がずれる原因になる。 */
+function emptyContainer(context) {
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        if (visit.type !== "box")
+            continue;
+        const contents = visit.node["contents"];
+        if (!Array.isArray(contents) || contents.length > 0)
+            continue;
+        findings.push({
+            rule: "render/empty-container",
+            severity: "warning",
+            path: `${visit.path}.contents`,
+            message: "中身の無い box があります",
+            hint: "描画はされませんが余白は残るため、周りの間隔がずれて見えます。組み立ての段階で落としてください。",
+        });
+    }
+    return findings;
+}
+/** carousel の中で bubble の size が揃っていない。横幅が不揃いに並ぶ。 */
+function mixedBubbleSize(context) {
+    const sizes = new Map();
+    for (const visit of walk(context.message)) {
+        if (visit.type !== "bubble")
+            continue;
+        const size = typeof visit.node["size"] === "string" ? visit.node["size"] : "mega";
+        sizes.set(visit.path, size);
+    }
+    const distinct = new Set(sizes.values());
+    if (sizes.size < 2 || distinct.size < 2)
+        return [];
+    return [
+        {
+            rule: "render/mixed-bubble-size",
+            severity: "warning",
+            path: "$.contents.contents",
+            message: `carousel の中で bubble の size が揃っていません (${[...distinct].join(" / ")})`,
+            hint: "横幅が不揃いに並びます。意図した演出でなければ揃えてください。size の既定は mega です。",
+        },
+    ];
+}
+/** https でない URL。画像や動画が出ない。 */
+function insecureUrl(context) {
+    const keys = ["url", "previewUrl", "iconUrl", "backgroundImage"];
+    const findings = [];
+    for (const visit of walk(context.message)) {
+        for (const key of keys) {
+            const value = visit.node[key];
+            if (typeof value !== "string" || value === "")
+                continue;
+            if (value.startsWith("https://") || value.startsWith("data:"))
+                continue;
+            findings.push({
+                rule: "render/insecure-url",
+                severity: "warning",
+                path: `${visit.path}.${key}`,
+                message: `https でない URL です (${value.slice(0, 60)})`,
+                hint: "LINE は https 以外の画像を読みません。その場所は空欄になります。",
+            });
+        }
+    }
+    return findings;
+}
+
+// ---- rules/variables.js ----
+// 変数を後から差し込む使い方に対する検査。
+//
+// Flex を雛形として保存し、送るときに宛先ごとの値を差し込む作りは、
+// 業務で使うとほぼ必ず出てくる。このとき、差し込む値に改行や引用符が
+// 入ると JSON が壊れる。
+//
+// 壊れ方が悪い。雛形を作った人の手元では通り、値によっては通り、
+// **特定の相手に送るときだけ落ちる**。名前に " が入っている人が 1 人
+// 混ざっていた、という形で出る。
+
+/** {name} {field:誕生日} {{first_name}} $NAME のような形を拾う。 */
+const PLACEHOLDER = /\{\{?[^{}\n]{1,60}\}?\}/g;
+/** 値を差し込む可能性がある文字列プロパティ。 */
+const TEXT_KEYS = ["text", "altText", "label", "data", "displayText", "uri", "url"];
+/**
+ * プレースホルダを含む文字列。
+ *
+ * 差し込む値をエスケープしているかどうかは、この JSON からは分からない。
+ * だから「壊れている」ではなく「壊れうる」として warning で挙げ、
+ * 何を確かめればよいかを示す。
+ */
+function unescapedPlaceholder(context) {
+    const findings = [];
+    const seen = new Set();
+    for (const visit of walk(context.message)) {
+        for (const key of TEXT_KEYS) {
+            const value = visit.node[key];
+            if (typeof value !== "string")
+                continue;
+            const matches = [...value.matchAll(PLACEHOLDER)].map((m) => m[0]);
+            if (matches.length === 0)
+                continue;
+            const path = `${visit.path}.${key}`;
+            if (seen.has(path))
+                continue;
+            seen.add(path);
+            findings.push({
+                rule: "variables/unescaped-placeholder",
+                severity: "warning",
+                path,
+                message: `差し込みらしき記述があります (${matches.slice(0, 3).join(" ")})`,
+                hint: "差し込む値に改行や引用符が入ると JSON が壊れます。JSON の中に差し込むときは"
+                    + " JSON.stringify した結果から前後の引用符を落としたものを入れてください。"
+                    + " 素の値を入れると、特定の相手に送るときだけ落ちます。",
+            });
+        }
+    }
+    return findings;
+}
+
+// ---- index.js ----
+// 公開する入口。
+//
+//   validate(message)      Flex を検査する
+//   looksLikeFlex(text)    テキストとして送ろうとしているものが Flex でないか見る
+
+/** 既定で動くルール。名前で無効化できるよう、識別子と対にして持つ。 */
+const RULES = {
+    "schema/unknown-type": unknownType,
+    "schema/unknown-property": unknownProperty,
+    "schema/missing-required": missingRequired,
+    "schema/invalid-enum": invalidEnum,
+    "size/container-too-large": containerTooLarge,
+    "action/data-too-long": actionDataTooLong,
+    "render/dark-mode-invisible": darkModeInvisible,
+    "render/empty-container": emptyContainer,
+    "render/mixed-bubble-size": mixedBubbleSize,
+    "render/insecure-url": insecureUrl,
+    "variables/unescaped-placeholder": unescapedPlaceholder,
+};
+const applies = (rule, disabled) => !disabled.some((prefix) => rule === prefix || rule.startsWith(`${prefix}/`));
+/**
+ * Flex メッセージを検査する。
+ *
+ * `{type:"flex", altText, contents}` でも、中身の bubble / carousel 単体でも
+ * 受け取る。前者なら altText の欠落まで見られる。
+ */
+function validate(message, options = {}) {
+    const disabled = options.disable ?? [];
+    const allowed = new Set(options.allowProperties ?? []);
+    if (rootKind(message) === undefined) {
+        return finish([
+            {
+                rule: "schema/unknown-type",
+                severity: "error",
+                path: "$",
+                message: 'Flex メッセージではありません (type が "flex" / "bubble" / "carousel" のいずれでもない)',
+                hint: "テキストを渡していませんか。その場合は looksLikeFlex() を使ってください。",
+            },
+        ]);
+    }
+    const serialized = serialize(message);
+    if (serialized === undefined) {
+        // 循環参照など。LINE に送ることもできないので error として返す。
+        // ここで例外を投げると、検査を呼んだ側が落ちる。**検査器が入力で
+        // 落ちるのは、見逃すより悪い。**
+        return finish([
+            {
+                rule: "schema/not-serializable",
+                severity: "error",
+                path: "$",
+                message: "JSON にできません (循環参照が含まれている可能性があります)",
+                hint: "組み立ての途中で同じオブジェクトを 2 か所に入れていませんか。",
+            },
+        ]);
+    }
+    const context = { message, serialized };
+    const findings = [];
+    for (const [name, rule] of Object.entries(RULES)) {
+        if (!applies(name, disabled))
+            continue;
+        for (const finding of rule(context)) {
+            if (finding.rule === "schema/unknown-property") {
+                const key = finding.path.slice(finding.path.lastIndexOf(".") + 1);
+                if (allowed.has(key))
+                    continue;
+            }
+            findings.push(finding);
+        }
+    }
+    return finish(findings);
+}
+function serialize(value) {
+    try {
+        return JSON.stringify(value) ?? "";
+    }
+    catch {
+        return undefined;
+    }
+}
+function finish(findings) {
+    const errors = findings.filter((f) => f.severity === "error");
+    const warnings = findings.filter((f) => f.severity === "warning");
+    // ok は「LINE が受け取るか」だけを見る。warning は判断の余地があるので
+    // 含めない。ここを混ぜると、警告を消すために検査を切る動機が生まれる。
+    return { ok: errors.length === 0, findings, errors, warnings };
+}
+/** 人が読む1行に整える。CI のログや console.log にそのまま流せる。 */
+function format(finding) {
+    const head = `[${finding.severity}] ${finding.path}  ${finding.message}`;
+    return finding.hint === undefined ? head : `${head}\n          ${finding.hint}`;
+}
+
+return { validate, format, looksLikeFlex };
+})();
+</script>
+
+<script>
+  (() => {
+    const bubble = (extra = {}, bodyExtra = []) => ({
+      type: "flex",
+      altText: "本日のお知らせ",
+      contents: {
+        type: "bubble",
+        size: "mega",
+        body: {
+          type: "box",
+          layout: "vertical",
+          spacing: "md",
+          contents: [
+            { type: "text", text: "本日のお知らせ", weight: "bold", size: "lg" },
+            { type: "text", text: "17時に配信します", wrap: true },
+            ...bodyExtra,
+          ],
+        },
+        footer: {
+          type: "box",
+          layout: "vertical",
+          contents: [{
+            type: "button",
+            style: "primary",
+            action: { type: "postback", label: "詳しく見る", data: "detail" },
+          }],
+        },
+      },
+      ...extra,
+    });
+
+    const withAction = (data) => {
+      const message = bubble();
+      message.contents.footer.contents[0].action.data = data;
+      return message;
+    };
+
+    const PRESETS = [
+      { name: "問題なし", build: () => bubble() },
+      {
+        name: "メタ情報の外し忘れ",
+        build: () => bubble({ appMeta: { tapLimit: 1, group: "a3f" } }),
+      },
+      {
+        name: "動画のサムネイル無し",
+        build: () => bubble({}, [{ type: "video", url: "https://cdn.example.com/spot.mp4" }]),
+      },
+      {
+        name: "data が長すぎる",
+        build: () => withAction(JSON.stringify({ action: "open", label: "詳しく見る", target: "x".repeat(320) })),
+      },
+      {
+        name: "ダークモードで消える",
+        build: () => {
+          const message = bubble();
+          message.contents.body.contents[0].color = "#FFFFFF";
+          message.contents.body.contents[1].color = "#F8F8F8";
+          return message;
+        },
+      },
+      {
+        name: "差し込みで壊れうる",
+        build: () => {
+          const message = bubble();
+          message.contents.body.contents[0].text = "{name} さん、こんにちは";
+          return message;
+        },
+      },
+      {
+        name: "テキストとして送っている",
+        raw: () => JSON.stringify(bubble().contents, null, 2),
+      },
+    ];
+
+    const input = document.getElementById("input");
+    const findingsEl = document.getElementById("findings");
+    const verdict = document.getElementById("verdict");
+    const verdictText = document.getElementById("verdict-text");
+    const verdictNote = document.getElementById("verdict-note");
+    const counts = document.getElementById("counts");
+    const sizeReadout = document.getElementById("size-readout");
+    const detect = document.getElementById("detect");
+    const detectValue = document.getElementById("detect-value");
+    const detectReason = document.getElementById("detect-reason");
+    const presetsEl = document.getElementById("presets");
+
+    const encoder = new TextEncoder();
+
+    PRESETS.forEach((preset, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "preset";
+      button.textContent = preset.name;
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => load(index));
+      presetsEl.append(button);
+    });
+
+    function load(index) {
+      const preset = PRESETS[index];
+      input.value = preset.raw ? preset.raw() : JSON.stringify(preset.build(), null, 2);
+      [...presetsEl.children].forEach((button, i) => {
+        button.setAttribute("aria-pressed", String(i === index));
+      });
+      run();
+    }
+
+    function clearActivePreset() {
+      [...presetsEl.children].forEach((button) => button.setAttribute("aria-pressed", "false"));
+    }
+
+    function element(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function renderGroup(kind, label, note, items) {
+      const group = element("section", "group");
+      group.dataset.kind = kind;
+      const head = element("div", "group-head");
+      head.append(element("span", "group-label", `${label} — ${items.length}`));
+      head.append(element("span", "group-note", note));
+      group.append(head);
+
+      for (const finding of items) {
+        const row = element("article", "finding");
+        row.dataset.kind = kind;
+        const top = element("div", "finding-top");
+        top.append(element("span", "path", finding.path));
+        top.append(element("span", "rule-id", finding.rule));
+        row.append(top);
+        row.append(element("p", "finding-message", finding.message));
+        if (finding.hint) row.append(element("p", "finding-hint", finding.hint));
+        group.append(row);
+      }
+      return group;
+    }
+
+    function setVerdict(state, text, note) {
+      verdict.dataset.state = state;
+      verdictText.textContent = text;
+      verdictNote.textContent = note;
+    }
+
+    function run() {
+      const raw = input.value;
+      sizeReadout.textContent = raw.trim() === ""
+        ? "—"
+        : `${encoder.encode(raw).length.toLocaleString()} バイト`;
+
+      const detected = FlexGuard.looksLikeFlex(raw);
+      detect.dataset.flex = String(detected.looksLikeFlex);
+      detectValue.textContent = detected.looksLikeFlex
+        ? "テキストとして送ると JSON がそのまま届きます"
+        : "テキストとして送っても問題ありません";
+      detectReason.textContent = detected.reason;
+
+      findingsEl.replaceChildren();
+
+      if (raw.trim() === "") {
+        setVerdict("idle", "—", "");
+        counts.textContent = "—";
+        findingsEl.append(element("p", "empty", "JSON を貼るか、上の例を選んでください"));
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (error) {
+        setVerdict("fail", "JSON として読めません", "");
+        counts.textContent = "—";
+        findingsEl.append(element("p", "empty", String(error.message)));
+        return;
+      }
+
+      const result = FlexGuard.validate(parsed);
+      counts.textContent = `error ${result.errors.length} / warning ${result.warnings.length}`;
+
+      if (result.ok) {
+        setVerdict(
+          "pass",
+          "LINE は受け取ります",
+          result.warnings.length > 0 ? "そして、この先は誰も教えてくれません" : "",
+        );
+      } else {
+        setVerdict("fail", "LINE は受け取りません", "送信の時点で失敗します");
+      }
+
+      if (result.errors.length > 0) {
+        findingsEl.append(renderGroup(
+          "error",
+          "error",
+          "送信そのものが失敗します。すぐ気付きます。",
+          result.errors,
+        ));
+      }
+      if (result.warnings.length > 0) {
+        findingsEl.append(renderGroup(
+          "warning",
+          "warning",
+          "送信は成功します。相手の画面だけが違い、あなたには何も返りません。",
+          result.warnings,
+        ));
+      }
+      if (result.findings.length === 0) {
+        findingsEl.append(element("p", "empty", "指摘はありません"));
+      }
+    }
+
+    let timer;
+    input.addEventListener("input", () => {
+      clearActivePreset();
+      clearTimeout(timer);
+      timer = setTimeout(run, 180);
+    });
+
+    load(1);
+  })();
+</script>
