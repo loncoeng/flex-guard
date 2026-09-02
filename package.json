@@ -1,6 +1,6 @@
 {
   "name": "flex-guard",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Catch what LINE rejects, and what it renders wrong without telling you",
   "license": "MIT",
   "keywords": [

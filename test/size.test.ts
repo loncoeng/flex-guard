@@ -71,7 +71,7 @@ test("301 文字の data を error にする", () => {
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0, "action"]).data = "x".repeat(301);
   const [finding] = validate(message).errors;
-  assert.equal(finding?.rule, "action/data-too-long");
+  assert.equal(finding?.rule, "size/property-too-long");
   assert.match(finding?.message ?? "", /301/);
 });
 
@@ -84,6 +84,24 @@ test("data 超過の直し方を示す", () => {
   assert.match(finding?.hint ?? "", /識別子/);
 });
 
+test("2000 文字を超えた画像 URL も error にする", () => {
+  // 上限はアクションの data だけに付いているわけではない。仕様表から
+  // 引いているので、こちらも自動的に対象になる。
+  const message: any = validBubble();
+  at(message, ["contents", "body", "contents", 3]).url =
+    "https://cdn.example.com/" + "a".repeat(2000) + ".png";
+  const [finding] = validate(message).errors;
+  assert.equal(finding?.rule, "size/property-too-long");
+  assert.match(finding?.message ?? "", /FlexImage\.url/);
+});
+
+test("2000 文字以内の画像 URL は通る", () => {
+  const message: any = validBubble();
+  at(message, ["contents", "body", "contents", 3]).url =
+    "https://cdn.example.com/" + "a".repeat(1900) + ".png";
+  assert.deepEqual(validate(message).errors, []);
+});
+
 test("上限はアクションの種類ごとに仕様表から引く", () => {
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0]).action = {
@@ -92,5 +110,5 @@ test("上限はアクションの種類ごとに仕様表から引く", () => {
     mode: "date",
     data: "x".repeat(301),
   };
-  assert.equal(validate(message).errors[0]?.rule, "action/data-too-long");
+  assert.equal(validate(message).errors[0]?.rule, "size/property-too-long");
 });

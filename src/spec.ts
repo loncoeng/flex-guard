@@ -3,7 +3,7 @@
 //   npm run spec:generate
 //
 // 出典   https://raw.githubusercontent.com/line/line-openapi/main/messaging-api.yml
-// 取得日 2026-09-01
+// 取得日 2026-09-02
 // sha256 0227978ce1b3133e20da034fc33a9241000619ae4fea2fda7b61983abf79577a
 //
 // この表にあるプロパティ名は LINE 自身の定義から起こしている。手で
@@ -76,7 +76,7 @@ export const FLEX_COMPONENTS: Readonly<Record<string, TypeSpec>> = {
     schema: "FlexImage",
     properties: ["action","align","animated","aspectMode","aspectRatio","backgroundColor","flex","gravity","margin","offsetBottom","offsetEnd","offsetStart","offsetTop","position","size","type","url"],
     required: ["type","url"],
-    limits: {},
+    limits: {"url":2000},
     enums: {"position":["relative","absolute"],"align":["start","end","center"],"gravity":["top","bottom","center"],"aspectMode":["fit","cover"]},
   },
   "video": {

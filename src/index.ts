@@ -3,7 +3,7 @@
 //   validate(message)      Flex を検査する
 //   looksLikeFlex(text)    テキストとして送ろうとしているものが Flex でないか見る
 
-import { actionDataTooLong, containerTooLarge } from "./rules/size.ts";
+import { containerTooLarge, propertyTooLong } from "./rules/size.ts";
 import {
   darkModeInvisible,
   emptyContainer,
@@ -31,7 +31,7 @@ const RULES: Readonly<Record<string, Rule>> = {
   "schema/missing-required": missingRequired,
   "schema/invalid-enum": invalidEnum,
   "size/container-too-large": containerTooLarge,
-  "action/data-too-long": actionDataTooLong,
+  "size/property-too-long": propertyTooLong,
   "render/dark-mode-invisible": darkModeInvisible,
   "render/empty-container": emptyContainer,
   "render/mixed-bubble-size": mixedBubbleSize,

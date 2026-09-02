@@ -31,8 +31,22 @@ interface Schema {
   enum?: string[];
   maxLength?: number;
   maxItems?: number;
+  description?: string;
   discriminator?: { propertyName: string; mapping: Record<string, string> };
   $ref?: string;
+}
+
+/**
+ * 上限が説明文にしか書かれていない項目がある。
+ *
+ * たとえば画像の url は `maxLength` を持たず、説明が
+ * "Image URL (Max character limit: 2000)" となっている。機械可読な欄だけを
+ * 見ると取りこぼすが、かといって手で書き足すと**表を生成している意味が
+ * 無くなる**。出典が LINE の定義であることを保ったまま拾う。
+ */
+function limitFromDescription(text: string | undefined): number | undefined {
+  const match = /Max character limit:\s*([0-9]+)/i.exec(text ?? "");
+  return match ? Number(match[1]) : undefined;
 }
 
 interface Document {
@@ -73,7 +87,9 @@ function collect(schemas: Record<string, Schema>, name: string, seen = new Set<s
     for (const part of node.allOf ?? []) merge(part);
     for (const [key, value] of Object.entries(node.properties ?? {})) {
       spec.properties.push(key);
+      const described = limitFromDescription(value.description);
       if (typeof value.maxLength === "number") spec.limits[key] = value.maxLength;
+      else if (described !== undefined) spec.limits[key] = described;
       if (typeof value.maxItems === "number") spec.limits[key] = value.maxItems;
       if (Array.isArray(value.enum)) spec.enums[key] = value.enum;
     }

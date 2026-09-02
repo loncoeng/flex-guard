@@ -109,7 +109,21 @@ export function mixedBubbleSize(context: RuleContext): Finding[] {
   ];
 }
 
-/** https でない URL。画像や動画が出ない。 */
+/**
+ * https でない画像・動画の URL。
+ *
+ * LINE の文書は画像メッセージと動画メッセージについて「HTTPS (TLS 1.2
+ * 以上) を使ってください」と明記している。ただし Flex の項に同じ記述は
+ * なく、**API が拒否すると書かれた箇所は見つからない。**
+ *
+ * そこで error ではなく warning にしてある。実際に観測できる結果は
+ * 「その場所が空欄で届く」であり、送信そのものは通る。error にすると
+ * 「LINE が受け取りません」と言うことになるが、それを裏づける記述が
+ * 無い。**根拠を示せないまま重く扱わない**、というのがこのライブラリの
+ * 立て方である。
+ *
+ * 拒否されると確認できたら error に上げる。
+ */
 export function insecureUrl(context: RuleContext): Finding[] {
   const keys = ["url", "previewUrl", "iconUrl", "backgroundImage"];
   const findings: Finding[] = [];
@@ -123,7 +137,10 @@ export function insecureUrl(context: RuleContext): Finding[] {
         severity: "warning",
         path: `${visit.path}.${key}`,
         message: `https でない URL です (${value.slice(0, 60)})`,
-        hint: "LINE は https 以外の画像を読みません。その場所は空欄になります。",
+        hint:
+          "LINE は画像と動画に HTTPS (TLS 1.2 以上) を使うよう求めています。"
+          + "読み込まれず、その場所が空欄のまま相手に届きます。",
+        spec: "https://developers.line.biz/en/docs/messaging-api/message-types/",
       });
     }
   }

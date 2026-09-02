@@ -92,7 +92,7 @@ together and you hand people a reason to switch the check off to silence a warni
 | `schema/invalid-enum` | `large` where `size` wanted `mega` |
 | `size/bubble-too-large` | A bubble over 10KB |
 | `size/carousel-too-large` | A carousel over 50KB |
-| `action/data-too-long` | An action's `data` over 300 characters |
+| `size/property-too-long` | Past a documented character limit — 300 for an action's `data`, 2000 for an image `url` |
 | `schema/not-serializable` | Cannot become JSON at all (a cycle) |
 
 ### warning
@@ -183,6 +183,13 @@ builds Flex, and how you assemble it is your business.
 of bubbles in a carousel, a maximum nesting depth — no published figure for any of them
 turned up, so none of them are here. **One rule you cannot justify costs you the
 credibility of the rest.** They go in when a source does.
+
+The same reasoning keeps **`render/insecure-url` a warning.** LINE's docs say plainly, of
+image and video messages, to "make sure the URLs have the HTTPS (TLS 1.2 or later)
+protocol" — but the Flex pages do not repeat it, and nothing found says the API refuses
+one. What can be observed is an empty slot arriving on someone's screen; the send itself
+goes through. Calling it an error would assert that LINE rejects the message, and there
+is no published line behind that. **It moves up when a source says so.**
 
 **It cannot promise how anything looks.** LINE states plainly that the same Flex Message
 renders differently depending on device OS, LINE version, resolution, language settings

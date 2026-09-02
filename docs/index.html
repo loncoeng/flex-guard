@@ -446,7 +446,7 @@ const FlexGuard = (() => {
 //   npm run spec:generate
 //
 // 出典   https://raw.githubusercontent.com/line/line-openapi/main/messaging-api.yml
-// 取得日 2026-09-01
+// 取得日 2026-09-02
 // sha256 0227978ce1b3133e20da034fc33a9241000619ae4fea2fda7b61983abf79577a
 //
 // この表にあるプロパティ名は LINE 自身の定義から起こしている。手で
@@ -506,7 +506,7 @@ const FLEX_COMPONENTS = {
         schema: "FlexImage",
         properties: ["action", "align", "animated", "aspectMode", "aspectRatio", "backgroundColor", "flex", "gravity", "margin", "offsetBottom", "offsetEnd", "offsetStart", "offsetTop", "position", "size", "type", "url"],
         required: ["type", "url"],
-        limits: {},
+        limits: { "url": 2000 },
         enums: { "position": ["relative", "absolute"], "align": ["start", "end", "center"], "gravity": ["top", "bottom", "center"], "aspectMode": ["fit", "cover"] },
     },
     "video": {
@@ -968,20 +968,20 @@ function containerTooLarge(context) {
     ];
 }
 /**
- * アクションの data が上限を超えている。
+ * 仕様に上限のある項目が、その上限を超えている。
  *
- * 超えると LINE に拒否されるが、**押しても何も起きないという形で現れる**
- * ことがある。動かないのに例外も出ないので、原因に辿り着きにくい。
+ * 対象はアクションの `data` だけではない。画像の `url` にも 2000 文字の
+ * 上限がある。どこに上限があるかは仕様表から引くので、ここに数値を書か
+ * ない。**書けば LINE 側が変えたときに嘘になる。**
  *
- * 上限は postback / datetimepicker / richmenuswitch のいずれも 300。
- * 仕様表から読むので、ここに数値を書かない。
+ * 超えたときの現れ方が悪い。`data` の場合は押しても何も起きないという
+ * 形になり、例外もログも出ない。
  */
-function actionDataTooLong(context) {
+function propertyTooLong(context) {
     const findings = [];
     for (const visit of walk(context.message)) {
-        if (visit.kind !== "action" || visit.type === undefined)
-            continue;
-        const spec = ACTIONS[visit.type];
+        const spec = specFor(visit)
+            ?? (visit.kind === "action" && visit.type !== undefined ? ACTIONS[visit.type] : undefined);
         if (!spec)
             continue;
         for (const [key, limit] of Object.entries(spec.limits)) {
@@ -989,17 +989,26 @@ function actionDataTooLong(context) {
             if (typeof value !== "string" || value.length <= limit)
                 continue;
             findings.push({
-                rule: "action/data-too-long",
+                rule: "size/property-too-long",
                 severity: "error",
                 path: `${visit.path}.${key}`,
                 message: `${spec.schema}.${key} が ${limit} 文字を超えています (${value.length})`,
-                hint: "アクションの中身をそのまま載せていませんか。識別子だけを入れて、"
-                    + "実体は送信ログなど別の場所から引き直す形にすると、上限に当たらなくなります。",
-                spec: "https://developers.line.biz/en/reference/messaging-api/#action-objects",
+                hint: hintFor(spec.schema, key),
+                spec: "https://github.com/line/line-openapi/blob/main/messaging-api.yml",
             });
         }
     }
     return findings;
+}
+function hintFor(schema, key) {
+    if (key === "data") {
+        return "アクションの中身をそのまま載せていませんか。識別子だけを入れて、"
+            + "実体は送信ログなど別の場所から引き直す形にすると、上限に当たらなくなります。";
+    }
+    if (key === "url") {
+        return "署名つきの URL やクエリを大量に付けていませんか。短縮するか、中継する経路を用意してください。";
+    }
+    return `${schema}.${key} は ${key} の上限を超えると LINE に拒否されます。`;
 }
 
 // ---- rules/render.js ----
@@ -1110,7 +1119,21 @@ function mixedBubbleSize(context) {
         },
     ];
 }
-/** https でない URL。画像や動画が出ない。 */
+/**
+ * https でない画像・動画の URL。
+ *
+ * LINE の文書は画像メッセージと動画メッセージについて「HTTPS (TLS 1.2
+ * 以上) を使ってください」と明記している。ただし Flex の項に同じ記述は
+ * なく、**API が拒否すると書かれた箇所は見つからない。**
+ *
+ * そこで error ではなく warning にしてある。実際に観測できる結果は
+ * 「その場所が空欄で届く」であり、送信そのものは通る。error にすると
+ * 「LINE が受け取りません」と言うことになるが、それを裏づける記述が
+ * 無い。**根拠を示せないまま重く扱わない**、というのがこのライブラリの
+ * 立て方である。
+ *
+ * 拒否されると確認できたら error に上げる。
+ */
 function insecureUrl(context) {
     const keys = ["url", "previewUrl", "iconUrl", "backgroundImage"];
     const findings = [];
@@ -1126,7 +1149,9 @@ function insecureUrl(context) {
                 severity: "warning",
                 path: `${visit.path}.${key}`,
                 message: `https でない URL です (${value.slice(0, 60)})`,
-                hint: "LINE は https 以外の画像を読みません。その場所は空欄になります。",
+                hint: "LINE は画像と動画に HTTPS (TLS 1.2 以上) を使うよう求めています。"
+                    + "読み込まれず、その場所が空欄のまま相手に届きます。",
+                spec: "https://developers.line.biz/en/docs/messaging-api/message-types/",
             });
         }
     }
@@ -1197,7 +1222,7 @@ const RULES = {
     "schema/missing-required": missingRequired,
     "schema/invalid-enum": invalidEnum,
     "size/container-too-large": containerTooLarge,
-    "action/data-too-long": actionDataTooLong,
+    "size/property-too-long": propertyTooLong,
     "render/dark-mode-invisible": darkModeInvisible,
     "render/empty-container": emptyContainer,
     "render/mixed-bubble-size": mixedBubbleSize,

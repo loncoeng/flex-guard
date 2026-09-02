@@ -87,7 +87,7 @@ if (!result.ok) {
 | `schema/invalid-enum` | `size` に `large` と書くような取り違え |
 | `size/bubble-too-large` | bubble が 10KB 超 |
 | `size/carousel-too-large` | carousel が 50KB 超 |
-| `action/data-too-long` | アクションの `data` が 300 文字超 |
+| `size/property-too-long` | 仕様の文字数上限を超えた（アクションの `data` は 300、画像の `url` は 2000） |
 | `schema/not-serializable` | JSON にできない（循環参照） |
 
 ### warning
@@ -161,6 +161,8 @@ validate(message, {
 **送信もしません。** 送る直前に挟むものなので、送信そのものには関わりません。
 
 **出典の無いルールは入れていません。** altText の文字数上限、carousel に入る bubble の枚数、ネストの深さは、公式に数値の記載を見つけられなかったため入れていません。**根拠を示せないルールを 1 つ入れると、他の全部の信用が落ちます。** 出典が確認できたら足します。
+
+同じ理由で、**`render/insecure-url` は warning に留めています。** LINE の文書は画像・動画メッセージについて「HTTPS (TLS 1.2 以上) を使ってください」と明記していますが、Flex の項に同じ記述はなく、API が拒否すると書かれた箇所も見つかりませんでした。観測できる結果は「その場所が空欄で届く」であり、送信そのものは通ります。error にすると「LINE が受け取りません」と言うことになりますが、それを裏づける記述がありません。**拒否されると確認できたら上げます。**
 
 **見え方は保証できません。** LINE 自身が、同じ Flex でも端末の OS・LINE のバージョン・解像度・言語設定・フォントによって描画が変わると書いています。ここで見ているのは、そのうち JSON から判断できる範囲だけです。
 
