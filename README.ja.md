@@ -1,6 +1,6 @@
 # flex-guard
 
-[![test](https://github.com/lon-coeng/flex-guard/actions/workflows/test.yml/badge.svg)](https://github.com/lon-coeng/flex-guard/actions/workflows/test.yml)
+[![test](https://github.com/loncoeng/flex-guard/actions/workflows/test.yml/badge.svg)](https://github.com/loncoeng/flex-guard/actions/workflows/test.yml)
 [![npm](https://img.shields.io/npm/v/flex-guard?color=1C4E93&label=npm)](https://www.npmjs.com/package/flex-guard)
 
 *[English version](README.md)*
@@ -58,7 +58,7 @@ if (!result.ok) {
 
 ## 動かして試す
 
-**[デモページ](https://lon-coeng.github.io/flex-guard/)** で、JSON を貼って結果を見られます。
+**[デモページ](https://loncoeng.github.io/flex-guard/)** で、JSON を貼って結果を見られます。
 
 動いているのはこのリポジトリのビルド結果そのもので、ページ用に書き直したものではありません（`npm run demo:build` で生成し、CI で一致を確認しています）。ページは静的で、開いたあとサーバーには一切問い合わせません。
 

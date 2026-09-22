@@ -23,7 +23,7 @@ jobs:
 
   publish:
     needs: test
-    if: github.repository == 'lon-coeng/flex-guard'
+    if: github.repository == 'loncoeng/flex-guard'
     runs-on: ubuntu-latest
     permissions:
       # OIDC の証明を発行するために要る。これが無いと認証できない。
