@@ -1,6 +1,6 @@
 # flex-guard
 
-[![test](https://github.com/lon-coeng/flex-guard/actions/workflows/test.yml/badge.svg)](https://github.com/lon-coeng/flex-guard/actions/workflows/test.yml)
+[![test](https://github.com/loncoeng/flex-guard/actions/workflows/test.yml/badge.svg)](https://github.com/loncoeng/flex-guard/actions/workflows/test.yml)
 [![npm](https://img.shields.io/npm/v/flex-guard?color=1C4E93&label=npm)](https://www.npmjs.com/package/flex-guard)
 
 *[日本語版 / Japanese version](README.ja.md)*
@@ -61,7 +61,7 @@ if (!result.ok) {
 
 ## Try it
 
-**[Live demo](https://lon-coeng.github.io/flex-guard/)** — paste a message, watch what comes back.
+**[Live demo](https://loncoeng.github.io/flex-guard/)** — paste a message, watch what comes back.
 
 It runs this repository's build output, not a rewrite for the page (`npm run demo:build` generates it; CI checks the two still match). The page is static and talks to no server once it has loaded.
 

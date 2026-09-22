@@ -12,13 +12,13 @@
     "chatbot"
   ],
   "author": "Coeng",
-  "homepage": "https://lon-coeng.github.io/flex-guard/",
+  "homepage": "https://loncoeng.github.io/flex-guard/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lon-coeng/flex-guard.git"
+    "url": "git+https://github.com/loncoeng/flex-guard.git"
   },
   "bugs": {
-    "url": "https://github.com/lon-coeng/flex-guard/issues"
+    "url": "https://github.com/loncoeng/flex-guard/issues"
   },
   "sideEffects": false,
   "type": "module",
