@@ -17,6 +17,12 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# The token this job is given. Without this block it gets the repository's
+# default, which is wider than anything here needs: nothing writes back to the
+# repository, and a step that is compromised should not be able to.
+permissions:
+  contents: read
+
 jobs:
   test:
     uses: ./.github/workflows/test.yml
@@ -30,10 +36,10 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # trusted publishing に対応した版が要る。
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
           registry-url: https://registry.npmjs.org
