@@ -1,12 +1,13 @@
-// テストで使う、指摘が 1 件も出ない Flex メッセージ。
+// Flex messages that produce no findings at all, for the tests to build on.
 //
-// 検査器で一番怖いのは誤検出である。正しいものを「送れません」と止めたら、
-// 次からは誰も検査を通さなくなる。だから各テストは「壊した 1 箇所だけが
-// 挙がること」を確かめる形にしてあり、その土台がこれである。
+// The worst thing a checker can do is report something that is not there.
+// Stop a valid message with "you cannot send this" and nobody runs the check
+// again. So every test takes one of these, breaks one thing, and asserts that
+// the one broken thing is what comes back.
 
 export const validBubble = () => ({
   type: "flex" as const,
-  altText: "本日のお知らせ",
+  altText: "Today's notice",
   contents: {
     type: "bubble",
     size: "mega",
@@ -15,8 +16,8 @@ export const validBubble = () => ({
       layout: "vertical",
       spacing: "md",
       contents: [
-        { type: "text", text: "本日のお知らせ", weight: "bold", size: "lg" },
-        { type: "text", text: "17時に配信します", wrap: true },
+        { type: "text", text: "Today's notice", weight: "bold", size: "lg" },
+        { type: "text", text: "Going out at 17:00", wrap: true },
         { type: "separator", margin: "md" },
         { type: "image", url: "https://cdn.example.com/banner.png", size: "full" },
       ],
@@ -28,7 +29,7 @@ export const validBubble = () => ({
         {
           type: "button",
           style: "primary",
-          action: { type: "postback", label: "詳しく見る", data: "detail" },
+          action: { type: "postback", label: "Read more", data: "detail" },
         },
       ],
     },
@@ -37,10 +38,10 @@ export const validBubble = () => ({
 
 export const validCarousel = () => ({
   type: "flex" as const,
-  altText: "3件のお知らせ",
+  altText: "Three notices",
   contents: {
     type: "carousel",
-    contents: [bubble("1件目"), bubble("2件目"), bubble("3件目")],
+    contents: [bubble("First"), bubble("Second"), bubble("Third")],
   },
 });
 
@@ -56,7 +57,8 @@ function bubble(label: string) {
   };
 }
 
-/** 深い場所を書き換えるための小さな道具。テストの意図を1行で見せるために使う。 */
+/** A small tool for reaching deep into a message, so a test's intent fits on
+ *  one line. */
 export function at(root: any, path: readonly (string | number)[]): any {
   return path.reduce((node, key) => node[key], root);
 }

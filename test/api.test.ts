@@ -1,4 +1,4 @@
-// 公開している入口の振る舞い。
+// How the public entry points behave.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -6,7 +6,7 @@ import test from "node:test";
 import { format, validate } from "../src/index.ts";
 import { at, validBubble } from "./fixtures.ts";
 
-/** error と warning を 1 件ずつ持つメッセージ。 */
+/** A message with exactly one error and one warning in it. */
 function mixed(): any {
   const message: any = validBubble();
   message.appMeta = { tapLimit: 1 };
@@ -14,14 +14,14 @@ function mixed(): any {
   return message;
 }
 
-test("ok は error の有無だけを見る", () => {
+test("ok answers one question: are there errors", () => {
   const result = validate(mixed());
   assert.equal(result.ok, false);
   assert.equal(result.errors.length, 1);
   assert.equal(result.warnings.length, 1);
 });
 
-test("warning だけなら ok は true", () => {
+test("warnings alone leave ok true", () => {
   const message: any = validBubble();
   at(message, ["contents", "body", "contents", 0]).color = "#FFFFFF";
   const result = validate(message);
@@ -29,40 +29,42 @@ test("warning だけなら ok は true", () => {
   assert.equal(result.warnings.length, 1);
 });
 
-test("findings は error と warning の合計", () => {
+test("findings is the errors and the warnings together", () => {
   const result = validate(mixed());
   assert.equal(result.findings.length, result.errors.length + result.warnings.length);
 });
 
-// --- 無効化 ---
+// --- turning rules off ---
 
-test("ルールを名前で無効にできる", () => {
+test("a rule can be turned off by name", () => {
   const result = validate(mixed(), { disable: ["schema/unknown-property"] });
   assert.deepEqual(result.errors, []);
   assert.equal(result.warnings.length, 1);
 });
 
-test("前方一致でまとめて無効にできる", () => {
-  // 見え方の検査は「そう作ってある」ことがあるので、まとめて外せる方がよい。
+test("a prefix turns off a whole set", () => {
+  // An appearance check is sometimes exactly how something was built, so
+  // dropping the set at once is the more useful behaviour.
   const result = validate(mixed(), { disable: ["render"] });
   assert.deepEqual(result.warnings, []);
 });
 
-test("無効にしていないものは残る", () => {
+test("what was not turned off stays", () => {
   const result = validate(mixed(), { disable: ["render", "size"] });
   assert.equal(result.errors.length, 1);
 });
 
-// --- プロパティの許可 ---
+// --- allowing a property ---
 
-test("プロパティを名指しで許可できる", () => {
-  // 表は LINE の定義から生成しているので、LINE が先に増やすと一時的に
-  // 未知と出る。再生成を待たずに進めるための逃げ道。
+test("a property can be allowed by name", () => {
+  // The table is generated from LINE's definition, so something they add
+  // first reads as unknown here until it is regenerated. This is the way
+  // past it without waiting.
   const result = validate(mixed(), { allowProperties: ["appMeta"] });
   assert.deepEqual(result.errors, []);
 });
 
-test("許可していないプロパティは残る", () => {
+test("a property that was not allowed stays", () => {
   const message: any = validBubble();
   message.appMeta = {};
   message.otherMeta = {};
@@ -71,42 +73,43 @@ test("許可していないプロパティは残る", () => {
   assert.equal(result.errors[0]?.path, "$.otherMeta");
 });
 
-// --- 表示 ---
+// --- formatting ---
 
-test("format は 1 行目に severity と場所を出す", () => {
+test("format puts the severity and the place on the first line", () => {
   const [finding] = validate(mixed()).errors;
   const [head] = format(finding!).split("\n");
   assert.match(head!, /^\[error\] \$\.appMeta/);
 });
 
-test("format は直し方を続けて出す", () => {
+test("format puts the fix on the line after", () => {
   const [finding] = validate(mixed()).errors;
   assert.equal(format(finding!).split("\n").length, 2);
 });
 
-test("直し方が無い指摘は 1 行で出す", () => {
+test("a finding with no fix is one line", () => {
   assert.equal(format({ rule: "x", severity: "warning", path: "$", message: "y" }).split("\n").length, 1);
 });
 
-// --- 壊れた入力で落ちないこと ---
+// --- and it does not fall over on broken input ---
 
-test("想定外の形でも例外を投げない", () => {
+test("nothing throws, whatever shape arrives", () => {
   const broken: unknown[] = [
     undefined,
     null,
     { type: "flex" },
     { type: "flex", contents: null },
-    { type: "bubble", body: "文字列" },
-    { type: "carousel", contents: "配列ではない" },
+    { type: "bubble", body: "a string" },
+    { type: "carousel", contents: "not an array" },
     { type: "bubble", body: { type: "box", contents: [null, 1, "x"] } },
   ];
   for (const value of broken) {
-    assert.doesNotThrow(() => validate(value), `${JSON.stringify(value)} で落ちた`);
+    assert.doesNotThrow(() => validate(value), `${JSON.stringify(value)} threw`);
   }
 });
 
-test("循環参照は例外ではなく指摘として返す", () => {
-  // 検査器が入力で落ちるのは、見逃すより悪い。呼んだ側が道連れになる。
+test("a cycle comes back as a finding, not an exception", () => {
+  // A checker that falls over on its input is worse than a miss: it takes the
+  // caller down with it.
   const message: any = validBubble();
   message.contents.body.contents.push(message.contents.body);
   const result = validate(message);

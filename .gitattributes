@@ -1,3 +1,4 @@
-# 生成物を差分比較するので、改行は LF に固定する。Windows で作業すると
-# CRLF に変換され、生成し直しただけで差分が出てしまう。
+# Line endings are pinned to LF, because a generated file is compared by
+# diff. Working on Windows converts them to CRLF, and then regenerating the
+# file on its own produces a difference.
 * text=auto eol=lf

@@ -1,23 +1,25 @@
-// 「これはテキストではない」の判定。
+// Deciding that something is not text.
 //
-// 他のルールと違い、これは Flex の中身ではなく **送ろうとしている種別**を
-// 疑う。Flex を保存して後から送る作りでは、種別と中身が食い違うことが
-// 起きる。種別が text のまま Flex の JSON を送ると、LINE はそれを文字列
-// として扱い、**受け取った人の画面に JSON がそのまま表示される**。
+// Unlike the other rules, this one doubts **the message type being sent**
+// rather than the contents of a Flex message. Where messages are stored and
+// sent later, the type and the contents come apart. Send Flex JSON with the
+// type still set to text and LINE treats it as a string, and **the recipient
+// gets the JSON on their screen.**
 //
-// この事故はエラーにならない。送信は成功し、配信数も増える。画面の
-// プレビューは種別ではなく中身を見て描いていることが多いので、管理画面
-// では正しく絵で出る。**送った側から見て、すべて正常に見える。**
+// Nothing about this is an error. The send succeeds and the delivery count
+// goes up. A preview in an admin screen usually renders from the contents
+// rather than the type, so it draws correctly there. **From the sending side,
+// everything looks fine.**
 //
-// だから送る直前の一行に置く価値がある。
+// Which is why it is worth one line just before sending.
 
-/** looksLikeFlex の判定結果。何を根拠にそう見たかを返す。 */
+/** What looksLikeFlex decided, and what it decided it on. */
 export interface FlexLikeness {
-  /** Flex の JSON に見える */
+  /** It looks like Flex JSON */
   looksLikeFlex: boolean;
   /** bubble / carousel / undefined */
   containerType: string | undefined;
-  /** そう判断した理由。判定を疑うときに読む */
+  /** Why it was read that way; for when you doubt the answer */
   reason: string;
 }
 
@@ -28,25 +30,26 @@ const NOT_FLEX = (reason: string): FlexLikeness => ({
 });
 
 /**
- * テキストとして送ろうとしている文字列が、実は Flex ではないかを見る。
+ * Check whether a string about to be sent as text is in fact Flex.
  *
- * 判定は「JSON として読めて、Flex の container の形をしているか」に絞る。
- * 先頭が `{` かどうかだけで見ると、`[` で始まる配列を取りこぼす。逆に
- * 緩くしすぎると、`[FORM_1]` のような角括弧で始まる普通の本文を誤判定する。
+ * The test is narrow: does it parse as JSON, and is it shaped like a Flex
+ * container. Looking only at whether it starts with `{` misses an array
+ * starting with `[`. Loosen it too far and ordinary body text that starts
+ * with a bracket, like `[FORM_1]`, gets called Flex.
  */
 export function looksLikeFlex(text: string): FlexLikeness {
   const trimmed = text.trim();
-  if (trimmed === "") return NOT_FLEX("空文字");
+  if (trimmed === "") return NOT_FLEX("empty string");
   if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
-    return NOT_FLEX("JSON の開始文字で始まっていない");
+    return NOT_FLEX("does not start the way JSON does");
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
   } catch {
-    // 角括弧で始まる普通の本文はここに落ちる。テキストとして正しい。
-    return NOT_FLEX("JSON として読めない");
+    // Ordinary body text starting with a bracket lands here, correctly.
+    return NOT_FLEX("does not parse as JSON");
   }
 
   const candidates = Array.isArray(parsed) ? parsed : [parsed];
@@ -59,19 +62,19 @@ export function looksLikeFlex(text: string): FlexLikeness {
       return {
         looksLikeFlex: true,
         containerType: type,
-        reason: `type が "${type}"`,
+        reason: `the type is "${type}"`,
       };
     }
-    // {type:"flex", contents:{...}} の形で丸ごと入っていることもある。
+    // It also arrives whole, as {type:"flex", contents:{...}}.
     if (type === "flex" && typeof record["contents"] === "object") {
       const contents = record["contents"] as Record<string, unknown> | null;
       const inner = contents === null ? undefined : contents["type"];
       return {
         looksLikeFlex: true,
         containerType: typeof inner === "string" ? inner : undefined,
-        reason: 'type が "flex"',
+        reason: 'the type is "flex"',
       };
     }
   }
-  return NOT_FLEX("Flex の container が見当たらない");
+  return NOT_FLEX("no Flex container in it");
 }

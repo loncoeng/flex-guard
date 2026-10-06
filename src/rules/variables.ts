@@ -1,28 +1,28 @@
-// 変数を後から差し込む使い方に対する検査。
+// The check for templates with values substituted in later.
 //
-// Flex を雛形として保存し、送るときに宛先ごとの値を差し込む作りは、
-// 業務で使うとほぼ必ず出てくる。このとき、差し込む値に改行や引用符が
-// 入ると JSON が壊れる。
+// Storing a Flex message as a template and filling in per-recipient values at
+// send time is a pattern that turns up in almost any real use of this. And a
+// substituted value containing a newline or a quote breaks the JSON.
 //
-// 壊れ方が悪い。雛形を作った人の手元では通り、値によっては通り、
-// **特定の相手に送るときだけ落ちる**。名前に " が入っている人が 1 人
-// 混ざっていた、という形で出る。
+// How it breaks is the bad part. It works on the machine the template was
+// built on, it works for most values, and **it fails only when sending to one
+// particular person** — because one of them has a " in their name.
 
 import type { Finding, RuleContext } from "../types.ts";
 import { walk } from "../walk.ts";
 
-/** {name} {field:誕生日} {{first_name}} $NAME のような形を拾う。 */
+/** Catches shapes like {name} {field:birthday} {{first_name}} $NAME. */
 const PLACEHOLDER = /\{\{?[^{}\n]{1,60}\}?\}/g;
 
-/** 値を差し込む可能性がある文字列プロパティ。 */
+/** The string properties a value might be substituted into. */
 const TEXT_KEYS = ["text", "altText", "label", "data", "displayText", "uri", "url"];
 
 /**
- * プレースホルダを含む文字列。
+ * A string containing a placeholder.
  *
- * 差し込む値をエスケープしているかどうかは、この JSON からは分からない。
- * だから「壊れている」ではなく「壊れうる」として warning で挙げ、
- * 何を確かめればよいかを示す。
+ * Whether the substituted value gets escaped is not something this JSON can
+ * say. So this is a warning — "this can break", not "this is broken" — along
+ * with what to go and check.
  */
 export function unescapedPlaceholder(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
@@ -43,11 +43,11 @@ export function unescapedPlaceholder(context: RuleContext): Finding[] {
         rule: "variables/unescaped-placeholder",
         severity: "warning",
         path,
-        message: `差し込みらしき記述があります (${matches.slice(0, 3).join(" ")})`,
+        message: `this looks like a placeholder (${matches.slice(0, 3).join(" ")})`,
         hint:
-          "差し込む値に改行や引用符が入ると JSON が壊れます。JSON の中に差し込むときは"
-          + " JSON.stringify した結果から前後の引用符を落としたものを入れてください。"
-          + " 素の値を入れると、特定の相手に送るときだけ落ちます。",
+          "A substituted value containing a newline or a quote breaks the JSON. When"
+          + " substituting into JSON, insert JSON.stringify of the value with the"
+          + " surrounding quotes taken off. Insert it raw and it fails for one recipient.",
       });
     }
   }

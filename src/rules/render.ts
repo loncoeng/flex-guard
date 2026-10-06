@@ -1,16 +1,16 @@
-// 見え方の検査。すべて warning にしている。
+// The checks on how it looks. All of them are warnings.
 //
-// ここが本題である。挙がるものは全部「送信は成功する」。LINE は受け取り、
-// 相手にも届く。ただし相手の画面では意図と違って見える。
+// This is the real subject. Everything here sends successfully. LINE accepts
+// it, the recipient gets it, and on their screen it is not what was intended.
 //
-// 送った側にエラーは返らない。ログにも残らない。相手からの反応が無い、
-// という形でしか現れないので、**運用していても気付けない**。だから送る前に
-// 見るしかない。
+// No error comes back to the sender. Nothing reaches a log. The only sign of
+// it is the absence of a reply, so **running this in production will not tell
+// you**. Which leaves looking before it goes out.
 
 import type { Finding, RuleContext } from "../types.ts";
 import { isObject, walk } from "../walk.ts";
 
-/** #FFF / #FFFFFF / #FFFFFFFF から明度を出す。色として読めなければ undefined。 */
+/** Luminance from #FFF / #FFFFFF / #FFFFFFFF. undefined if it is not a colour. */
 function luminance(color: unknown): number | undefined {
   if (typeof color !== "string") return undefined;
   const hex = color.trim().replace(/^#/, "");
@@ -25,22 +25,25 @@ function luminance(color: unknown): number | undefined {
       : hex.slice(index * 2, index * 2 + 2);
     return Number.parseInt(raw, 16) / 255;
   };
-  // ITU-R BT.709 の輝度。厳密な知覚量ではないが、白に近いかの判定には足りる。
+  // ITU-R BT.709 luminance. Not a rigorous perceptual quantity, and enough to
+  // decide whether something is close to white.
   return 0.2126 * part(0) + 0.7152 * part(1) + 0.0722 * part(2);
 }
 
-/** 背景色が明示されているか。されていれば自動調整の話ではなくなる。 */
+/** Whether a background colour is set. If it is, this is no longer about the
+ *  automatic adjustment. */
 const hasOwnBackground = (node: Record<string, unknown>): boolean =>
   typeof node["backgroundColor"] === "string" || isObject(node["background"]);
 
 /**
- * ダークモードで読めなくなる文字色。
+ * A text colour that disappears in dark mode.
  *
- * LINE は既定の文字色を背景に合わせて自動調整する。しかし色を明示すると
- * その調整は効かなくなる。明るい画面で作って白に近い色を指定すると、
- * 相手がダークモードのとき背景に溶ける。
+ * LINE adapts the default text colour to the background. Set a colour and
+ * that adaptation stops applying. Build on a light screen, pick something
+ * close to white, and it dissolves for anyone in dark mode.
  *
- * 背景色を自分で指定している場合は、意図した組み合わせと見て黙る。
+ * Where a background colour is set, this stays quiet: that is a combination
+ * somebody chose.
  */
 export function darkModeInvisible(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
@@ -59,17 +62,18 @@ export function darkModeInvisible(context: RuleContext): Finding[] {
       rule: "render/dark-mode-invisible",
       severity: "warning",
       path: `${visit.path}.color`,
-      message: `白に近い文字色 (${String(visit.node["color"])}) を指定しています`,
+      message: `A near-white text colour (${String(visit.node["color"])}) is set explicitly`,
       hint:
-        "LINE は既定の文字色だけを背景に合わせて調整します。色を明示するとその調整は"
-        + "効かないので、相手がダークモードのとき背景に溶けます。色の指定を外すか、"
-        + "同じ場所に背景色を指定してください。",
+        "LINE adapts only the default text colour to the background. Setting a colour"
+        + " opts out of that, so it dissolves for anyone in dark mode. Either drop the"
+        + " colour, or set a background colour in the same place.",
     });
   }
   return findings;
 }
 
-/** 中身の無い箱。場所は取るのに何も出ないので、余白がずれる原因になる。 */
+/** A box with nothing in it. It takes up space and draws nothing, which is
+ *  where uneven spacing comes from. */
 export function emptyContainer(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
   for (const visit of walk(context.message)) {
@@ -80,14 +84,14 @@ export function emptyContainer(context: RuleContext): Finding[] {
       rule: "render/empty-container",
       severity: "warning",
       path: `${visit.path}.contents`,
-      message: "中身の無い box があります",
-      hint: "描画はされませんが余白は残るため、周りの間隔がずれて見えます。組み立ての段階で落としてください。",
+      message: "this box has nothing in it",
+      hint: "Nothing is drawn and the spacing stays, so everything around it sits wrong. Drop it while building the message.",
     });
   }
   return findings;
 }
 
-/** carousel の中で bubble の size が揃っていない。横幅が不揃いに並ぶ。 */
+/** bubbles of different sizes in one carousel, which lines up unevenly. */
 export function mixedBubbleSize(context: RuleContext): Finding[] {
   const sizes = new Map<string, string>();
   for (const visit of walk(context.message)) {
@@ -103,26 +107,26 @@ export function mixedBubbleSize(context: RuleContext): Finding[] {
       rule: "render/mixed-bubble-size",
       severity: "warning",
       path: "$.contents.contents",
-      message: `carousel の中で bubble の size が揃っていません (${[...distinct].join(" / ")})`,
-      hint: "横幅が不揃いに並びます。意図した演出でなければ揃えてください。size の既定は mega です。",
+      message: `the bubbles in this carousel are not the same size (${[...distinct].join(" / ")})`,
+      hint: "They line up at different widths. Unless that is deliberate, make them match. size defaults to mega.",
     },
   ];
 }
 
 /**
- * https でない画像・動画の URL。
+ * An image or video URL that is not https.
  *
- * LINE の文書は画像メッセージと動画メッセージについて「HTTPS (TLS 1.2
- * 以上) を使ってください」と明記している。ただし Flex の項に同じ記述は
- * なく、**API が拒否すると書かれた箇所は見つからない。**
+ * LINE's documentation says, of image and video messages, to "make sure the
+ * URLs have the HTTPS (TLS 1.2 or later) scheme". The Flex section says no
+ * such thing, and **nowhere could be found stating that the API rejects it.**
  *
- * そこで error ではなく warning にしてある。実際に観測できる結果は
- * 「その場所が空欄で届く」であり、送信そのものは通る。error にすると
- * 「LINE が受け取りません」と言うことになるが、それを裏づける記述が
- * 無い。**根拠を示せないまま重く扱わない**、というのがこのライブラリの
- * 立て方である。
+ * So this is a warning and not an error. What can actually be observed is
+ * that the slot arrives blank, and the send goes through. Calling it an error
+ * would assert that LINE rejects the message, and there is nothing to back
+ * that up. **Not treating something as serious without being able to cite it**
+ * is how this library is built.
  *
- * 拒否されると確認できたら error に上げる。
+ * Confirm a rejection and this becomes an error.
  */
 export function insecureUrl(context: RuleContext): Finding[] {
   const keys = ["url", "previewUrl", "iconUrl", "backgroundImage"];
@@ -136,10 +140,10 @@ export function insecureUrl(context: RuleContext): Finding[] {
         rule: "render/insecure-url",
         severity: "warning",
         path: `${visit.path}.${key}`,
-        message: `https でない URL です (${value.slice(0, 60)})`,
+        message: `this URL is not https (${value.slice(0, 60)})`,
         hint:
-          "LINE は画像と動画に HTTPS (TLS 1.2 以上) を使うよう求めています。"
-          + "読み込まれず、その場所が空欄のまま相手に届きます。",
+          "LINE asks for HTTPS (TLS 1.2 or later) on images and video."
+          + " It will not load, and the slot arrives blank.",
         spec: "https://developers.line.biz/en/docs/messaging-api/message-types/",
       });
     }

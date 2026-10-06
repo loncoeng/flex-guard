@@ -1,14 +1,15 @@
-# タグを打つと npm へ公開する。
+# Publish to npm when a tag is pushed.
 #
-# 認証はトークンではなく OIDC で行う。GitHub が署名した短命の証明を npm が
-# 検証する仕組みなので、**盗める鍵がどこにも無い**。
+# Authenticated with OIDC rather than a token: GitHub signs a short-lived
+# assertion and npm verifies it, so **there is no key anywhere to steal**.
 #
-# npm の管理者を狙ったフィッシングで、長期間有効なトークンが奪われて
-# パッケージが乗っ取られる事故が実際に起きている。奪われるものを置かない
-# のが一番確実な対策になる。
+# Packages have actually been taken over this way — phishing aimed at an npm
+# maintainer, a long-lived token taken, and the package is theirs. Not keeping
+# anything that can be taken is the one reliable answer to it.
 #
-# npm 側の設定 (Trusted Publisher) と、このファイル名・リポジトリ名が
-# 一致している必要がある。片方だけ変えると公開できなくなる。
+# The Trusted Publisher configuration on npm's side has to agree with this
+# file's name and the repository name. Change one of them on its own and
+# publishing stops working.
 
 name: publish
 
@@ -32,13 +33,14 @@ jobs:
     if: github.repository == 'loncoeng/flex-guard'
     runs-on: ubuntu-latest
     permissions:
-      # OIDC の証明を発行するために要る。これが無いと認証できない。
+      # Needed to issue the OIDC assertion. Without it there is no way to
+      # authenticate at all.
       id-token: write
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      # trusted publishing に対応した版が要る。
+      # Needs a version that supports trusted publishing.
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
@@ -47,21 +49,21 @@ jobs:
 
       - run: npm ci
 
-      # package.json の version と、打たれたタグが食い違っていないか見る。
-      # ここを見ないと、v0.3.0 のタグで 0.2.0 が公開される事故が起きる。
-      - name: タグと version が一致しているか
+      # Check the tag against the version in package.json. Without this, a
+      # v0.3.0 tag quietly publishes 0.2.0.
+      - name: Check the tag matches the version
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           tag=${GITHUB_REF#refs/tags/v}
           pkg=$(node -p "require('./package.json').version")
           if [ "$tag" != "$pkg" ]; then
-            echo "タグ v$tag に対して package.json は $pkg です。合わせてください。"
+            echo "The tag says v$tag and package.json says $pkg. Make them agree."
             exit 1
           fi
-          echo "タグと version はどちらも $pkg です"
+          echo "Tag and version are both $pkg"
 
-      # OIDC は新しめの npm でしか使えない。同梱版だと古いことがある。
+      # OIDC needs a recent npm, and the bundled one can be older than that.
       - run: npm install -g npm@latest
 
-      - name: npm へ公開する
+      - name: Publish to npm
         run: npm publish --provenance --access public

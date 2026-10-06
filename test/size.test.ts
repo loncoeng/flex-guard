@@ -1,4 +1,4 @@
-// 大きさの検査。型検査が絶対に届かない領域。
+// The size checks: the territory a type checker cannot reach.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -9,65 +9,71 @@ import { at, validBubble, validCarousel } from "./fixtures.ts";
 const size = (value: unknown): number =>
   new TextEncoder().encode(JSON.stringify(value)).length;
 
-/** 指定バイト数に届くまで本文を膨らませる。 */
+// The filler is deliberately non-ASCII: three bytes a character in UTF-8. It
+// is here so that these tests fail if the implementation ever starts counting
+// characters instead of bytes.
+const FILLER = "あ";
+
+/** Grow the body until it reaches a given number of bytes. */
 function inflate(message: any, target: number): any {
   const body = at(message, ["contents", "body", "contents"]);
   while (size(message.contents) < target) {
-    body.push({ type: "text", text: "あ".repeat(500) });
+    body.push({ type: "text", text: FILLER.repeat(500) });
   }
   return message;
 }
 
-test("10KB 以内の bubble は通る", () => {
+test("a bubble within 10KB passes", () => {
   assert.deepEqual(validate(validBubble()).findings, []);
 });
 
-test("10KB を超えた bubble を error にする", () => {
+test("a bubble over 10KB is an error", () => {
   const result = validate(inflate(validBubble(), 10 * 1024 + 1));
   const [finding] = result.errors;
   assert.equal(finding?.rule, "size/bubble-too-large");
   assert.equal(result.ok, false);
 });
 
-test("超過の指摘に実際の大きさを載せる", () => {
-  // 「超えました」だけでは、どれだけ削ればよいか分からない。
+test("the finding says how big it actually is", () => {
+  // "Too big" on its own does not say how much has to come off.
   const [finding] = validate(inflate(validBubble(), 11 * 1024)).errors;
   assert.match(finding?.message ?? "", /KB/);
 });
 
-test("carousel の上限は 50KB で、bubble の 10KB ではない", () => {
-  // 20KB の carousel は通る。bubble の上限で判定していると、ここで誤検出する。
+test("a carousel's limit is 50KB, not a bubble's 10KB", () => {
+  // A 20KB carousel passes. Checked against the bubble limit, this is where
+  // the false positive would show up.
   const message: any = validCarousel();
   const first = message.contents.contents[0];
   while (size(message.contents) < 20 * 1024) {
-    first.body.contents.push({ type: "text", text: "あ".repeat(500) });
+    first.body.contents.push({ type: "text", text: FILLER.repeat(500) });
   }
   assert.deepEqual(validate(message).errors, []);
 });
 
-test("50KB を超えた carousel を error にする", () => {
+test("a carousel over 50KB is an error", () => {
   const message: any = validCarousel();
   const first = message.contents.contents[0];
   while (size(message.contents) < 50 * 1024 + 1) {
-    first.body.contents.push({ type: "text", text: "あ".repeat(500) });
+    first.body.contents.push({ type: "text", text: FILLER.repeat(500) });
   }
   assert.equal(validate(message).errors[0]?.rule, "size/carousel-too-large");
 });
 
-test("大きさの指摘には出典を付ける", () => {
+test("a size finding cites its source", () => {
   const [finding] = validate(inflate(validBubble(), 11 * 1024)).errors;
   assert.match(finding?.spec ?? "", /^https:\/\//);
 });
 
-// --- アクションの data ---
+// --- an action's data ---
 
-test("300 文字ちょうどの data は通る", () => {
+test("data at exactly 300 characters passes", () => {
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0, "action"]).data = "x".repeat(300);
   assert.deepEqual(validate(message).errors, []);
 });
 
-test("301 文字の data を error にする", () => {
+test("data at 301 characters is an error", () => {
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0, "action"]).data = "x".repeat(301);
   const [finding] = validate(message).errors;
@@ -75,18 +81,19 @@ test("301 文字の data を error にする", () => {
   assert.match(finding?.message ?? "", /301/);
 });
 
-test("data 超過の直し方を示す", () => {
-  // 上限に当たったとき、実体を別の場所から引き直す形にすれば当たらなくなる。
-  // それを知らないと、ラベルを削る方向に進んでしまう。
+test("the finding says how to fix an oversized data", () => {
+  // Over the limit, carrying an identifier and reading the payload back from
+  // elsewhere makes the limit stop mattering. Not knowing that, you go off
+  // shortening labels instead.
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0, "action"]).data = "x".repeat(400);
   const [finding] = validate(message).errors;
-  assert.match(finding?.hint ?? "", /識別子/);
+  assert.match(finding?.hint ?? "", /identifier/);
 });
 
-test("2000 文字を超えた画像 URL も error にする", () => {
-  // 上限はアクションの data だけに付いているわけではない。仕様表から
-  // 引いているので、こちらも自動的に対象になる。
+test("an image URL over 2000 characters is an error too", () => {
+  // The limits are not only on an action's data. They are read from the spec
+  // table, so this one is covered without being written down here.
   const message: any = validBubble();
   at(message, ["contents", "body", "contents", 3]).url =
     "https://cdn.example.com/" + "a".repeat(2000) + ".png";
@@ -95,18 +102,18 @@ test("2000 文字を超えた画像 URL も error にする", () => {
   assert.match(finding?.message ?? "", /FlexImage\.url/);
 });
 
-test("2000 文字以内の画像 URL は通る", () => {
+test("an image URL within 2000 characters passes", () => {
   const message: any = validBubble();
   at(message, ["contents", "body", "contents", 3]).url =
     "https://cdn.example.com/" + "a".repeat(1900) + ".png";
   assert.deepEqual(validate(message).errors, []);
 });
 
-test("上限はアクションの種類ごとに仕様表から引く", () => {
+test("the limit comes from the spec table, per action type", () => {
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0]).action = {
     type: "datetimepicker",
-    label: "日付",
+    label: "Date",
     mode: "date",
     data: "x".repeat(301),
   };

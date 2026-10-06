@@ -5,8 +5,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-  # publish から呼ぶ。テストを通っていないものを公開しないため、
-  # 同じ内容を publish 側に書き写さずに再利用する。
+  # Called from publish. Reused rather than copied over there, so that
+  # nothing gets published without having passed these.
   workflow_call:
 
 # The token this job is given. Without this block it gets the repository's
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # 型を剥がして .ts をそのまま実行する機能が要る。22.18 以降。
+        # Needs the ability to strip types and run .ts directly: 22.18 and up.
         node-version: ["22.18", "24"]
 
     steps:
@@ -29,14 +29,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      # 実行時の依存はゼロ。開発時のみ tsc を使う。
+      # No runtime dependencies; tsc is used in development only.
       - run: npm ci
-      - name: 型検査
+      - name: Type check
         run: npm run check
-      - name: 単体テスト
+      - name: Unit tests
         run: npm test
 
-      # デモページは src のビルド結果を埋め込んでいる。書き直しではないので、
-      # src を直したら生成し直す必要がある。忘れるとページだけ古いまま残る。
-      - name: デモページが src と一致しているか
+      # The demo page embeds src's build output. It is not a rewrite, so a
+      # change to src means regenerating it. Forget, and the page alone stays
+      # on the old behaviour.
+      - name: The demo page matches src
         run: npm run demo:check

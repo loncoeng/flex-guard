@@ -1,4 +1,4 @@
-// 構造の検査。ここで挙がるものは LINE が受け取らない。
+// The structural checks. Everything here is something LINE will not accept.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -8,25 +8,25 @@ import { at, validBubble, validCarousel } from "./fixtures.ts";
 
 const rules = (message: unknown): string[] => validate(message).findings.map((f) => f.rule);
 
-test("正しい bubble には何も出ない", () => {
+test("a valid bubble produces nothing", () => {
   const result = validate(validBubble());
   assert.deepEqual(result.findings, []);
   assert.equal(result.ok, true);
 });
 
-test("正しい carousel には何も出ない", () => {
+test("a valid carousel produces nothing", () => {
   assert.deepEqual(validate(validCarousel()).findings, []);
 });
 
-test("bubble 単体でも受け取る", () => {
-  // 保存してあるのが中身だけ、という作りは珍しくない。
+test("a bare bubble is accepted", () => {
+  // Storing only the contents is a common enough way to build this.
   const result = validate(validBubble().contents);
   assert.deepEqual(result.findings, []);
 });
 
-// --- 未知のプロパティ ---
+// --- properties that are not in the specification ---
 
-test("未知のプロパティを error にする", () => {
+test("an unknown property is an error", () => {
   const message: any = validBubble();
   message.appMeta = { tapLimit: 1 };
   const [finding] = validate(message).errors;
@@ -34,21 +34,21 @@ test("未知のプロパティを error にする", () => {
   assert.equal(finding?.path, "$.appMeta");
 });
 
-test("部品の中の未知プロパティも見つける", () => {
+test("an unknown property inside a component is found", () => {
   const message: any = validBubble();
   at(message, ["contents", "body", "contents", 0]).internalId = "abc";
   const [finding] = validate(message).errors;
   assert.equal(finding?.path, "$.contents.body.contents[0].internalId");
 });
 
-test("アクションの中の未知プロパティも見つける", () => {
+test("an unknown property inside an action is found", () => {
   const message: any = validBubble();
   at(message, ["contents", "footer", "contents", 0, "action"]).expiresAt = 1;
   assert.deepEqual(rules(message), ["schema/unknown-property"]);
 });
 
-test("styles や background は部品ではないので潜らない", () => {
-  // ここを型で判定すると、これらを未知の部品として誤検出する。
+test("styles and background are not components, and are not walked into", () => {
+  // Decided by type, these two get reported as unknown components.
   const message: any = validBubble();
   message.contents.styles = { body: { backgroundColor: "#F0F0F0" } };
   message.contents.body.background = {
@@ -60,9 +60,9 @@ test("styles や background は部品ではないので潜らない", () => {
   assert.deepEqual(validate(message).findings, []);
 });
 
-// --- 必須プロパティ ---
+// --- required properties ---
 
-test("altText が無ければ error", () => {
+test("a missing altText is an error", () => {
   const message: any = validBubble();
   delete message.altText;
   const [finding] = validate(message).errors;
@@ -70,8 +70,9 @@ test("altText が無ければ error", () => {
   assert.equal(finding?.path, "$.altText");
 });
 
-test("video の previewUrl と altContent の欠落を両方挙げる", () => {
-  // 仕様で必須と決まっている。サムネイルを用意できない動画は送れない。
+test("a video missing previewUrl and altContent reports both", () => {
+  // The specification requires them. A video you cannot produce a thumbnail
+  // for is a video you cannot send.
   const message: any = validBubble();
   message.contents.body.contents.push({ type: "video", url: "https://e.example.com/v.mp4" });
   const missing = validate(message)
@@ -80,30 +81,30 @@ test("video の previewUrl と altContent の欠落を両方挙げる", () => {
   assert.deepEqual(missing.sort(), ["altContent", "previewUrl"]);
 });
 
-test("必須の指摘には直し方が付く", () => {
+test("a required-property finding says how to fix it", () => {
   const message: any = validBubble();
   delete message.altText;
   const [finding] = validate(message).errors;
   assert.ok(finding?.hint && finding.hint.length > 0);
 });
 
-// --- 型と enum ---
+// --- types and enums ---
 
-test("知らない type を error にする", () => {
+test("a type that is not in the specification is an error", () => {
   const message: any = validBubble();
-  message.contents.body.contents.push({ type: "textt", text: "綴り違い" });
+  message.contents.body.contents.push({ type: "textt", text: "misspelled" });
   const found = validate(message).errors.find((f) => f.rule === "schema/unknown-type");
   assert.ok(found);
   assert.match(found.message, /textt/);
 });
 
-test("type が無い部品を error にする", () => {
+test("a component with no type at all is an error", () => {
   const message: any = validBubble();
-  message.contents.body.contents.push({ text: "type がない" });
+  message.contents.body.contents.push({ text: "no type here" });
   assert.ok(rules(message).includes("schema/unknown-type"));
 });
 
-test("enum に無い値を error にする", () => {
+test("a value outside an enum is an error", () => {
   const message: any = validBubble();
   message.contents.size = "large";
   const [finding] = validate(message).errors;
@@ -111,18 +112,18 @@ test("enum に無い値を error にする", () => {
   assert.match(finding?.hint ?? "", /mega/);
 });
 
-test("enum に在る値は通す", () => {
+test("every value in the enum passes", () => {
   const message: any = validBubble();
   for (const size of ["nano", "micro", "deca", "hecto", "kilo", "mega", "giga"]) {
     message.contents.size = size;
-    assert.deepEqual(validate(message).findings, [], `size=${size} で指摘が出た`);
+    assert.deepEqual(validate(message).findings, [], `size=${size} produced a finding`);
   }
 });
 
-// --- Flex でないもの ---
+// --- things that are not Flex at all ---
 
-test("Flex でないものを渡したら、その旨を返す", () => {
-  for (const value of ["こんにちは", 1, null, [], { type: "text", text: "x" }]) {
+test("something that is not Flex is reported as such", () => {
+  for (const value of ["hello", 1, null, [], { type: "text", text: "x" }]) {
     const result = validate(value);
     assert.equal(result.ok, false);
     assert.equal(result.errors[0]?.rule, "schema/unknown-type");

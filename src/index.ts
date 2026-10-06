@@ -1,7 +1,7 @@
-// 公開する入口。
+// The public entry points.
 //
-//   validate(message)      Flex を検査する
-//   looksLikeFlex(text)    テキストとして送ろうとしているものが Flex でないか見る
+//   validate(message)      check a Flex message
+//   looksLikeFlex(text)    check whether what is about to go out as text is Flex
 
 import { containerTooLarge, propertyTooLong } from "./rules/size.ts";
 import {
@@ -24,7 +24,7 @@ export type { Finding, Result, Rule, Severity } from "./types.ts";
 export type { FlexLikeness } from "./detect.ts";
 export { looksLikeFlex } from "./detect.ts";
 
-/** 既定で動くルール。名前で無効化できるよう、識別子と対にして持つ。 */
+/** The rules that run by default, paired with the identifier that disables one. */
 const RULES: Readonly<Record<string, Rule>> = {
   "schema/unknown-type": unknownType,
   "schema/unknown-property": unknownProperty,
@@ -41,19 +41,21 @@ const RULES: Readonly<Record<string, Rule>> = {
 
 export interface Options {
   /**
-   * 無効にするルール。前方一致で当たるので、`render` と書けば見え方の検査を
-   * まとめて外せる。
+   * Rules to turn off. Matched by prefix, so `render` drops the whole set of
+   * appearance checks at once.
    *
-   * 外せるようにしてあるのは、warning に「そう作ってある」場合があるため。
-   * error を外す用途は想定していないが、止める側に回るのはこちらの仕事では
-   * ないので禁じてはいない。
+   * They can be turned off because a warning is sometimes exactly how
+   * something was built. Turning off an error is not the intended use, but
+   * standing in your way is not this library's job, so it is not forbidden.
    */
   disable?: readonly string[];
   /**
-   * 仕様に無いが送りたいプロパティ。LINE 側が先に増えたときの逃げ道。
+   * Properties not in the specification that you want to send anyway — the way
+   * out for when LINE adds something first.
    *
-   * 表は LINE の定義から生成しているので、LINE が新しいプロパティを足すと
-   * 一時的に「未知」と出る。そのときに再生成を待たずに済むようにしておく。
+   * The table is generated from LINE's definition, so a new property on their
+   * side reads as "unknown" here until it is regenerated. This is so that you
+   * do not have to wait for that.
    */
   allowProperties?: readonly string[];
 }
@@ -62,10 +64,10 @@ const applies = (rule: string, disabled: readonly string[]): boolean =>
   !disabled.some((prefix) => rule === prefix || rule.startsWith(`${prefix}/`));
 
 /**
- * Flex メッセージを検査する。
+ * Check a Flex message.
  *
- * `{type:"flex", altText, contents}` でも、中身の bubble / carousel 単体でも
- * 受け取る。前者なら altText の欠落まで見られる。
+ * Takes `{type:"flex", altText, contents}`, and also a bare bubble or
+ * carousel from inside one. With the former, a missing altText is visible too.
  */
 export function validate(message: unknown, options: Options = {}): Result {
   const disabled = options.disable ?? [];
@@ -77,24 +79,24 @@ export function validate(message: unknown, options: Options = {}): Result {
         rule: "schema/unknown-type",
         severity: "error",
         path: "$",
-        message: 'Flex メッセージではありません (type が "flex" / "bubble" / "carousel" のいずれでもない)',
-        hint: "テキストを渡していませんか。その場合は looksLikeFlex() を使ってください。",
+        message: 'this is not a Flex message (type is none of "flex", "bubble" or "carousel")',
+        hint: "Did you pass text? If so, looksLikeFlex() is the one you want.",
       },
     ]);
   }
 
   const serialized = serialize(message);
   if (serialized === undefined) {
-    // 循環参照など。LINE に送ることもできないので error として返す。
-    // ここで例外を投げると、検査を呼んだ側が落ちる。**検査器が入力で
-    // 落ちるのは、見逃すより悪い。**
+    // A cycle, usually. LINE could not be sent this either, so it comes back
+    // as an error. Throwing here would take down whatever called the check,
+    // and **a checker that falls over on its input is worse than a miss.**
     return finish([
       {
         rule: "schema/not-serializable",
         severity: "error",
         path: "$",
-        message: "JSON にできません (循環参照が含まれている可能性があります)",
-        hint: "組み立ての途中で同じオブジェクトを 2 か所に入れていませんか。",
+        message: "this cannot be turned into JSON (it may contain a cycle)",
+        hint: "Did you put the same object in two places while building it?",
       },
     ]);
   }
@@ -126,12 +128,13 @@ function serialize(value: unknown): string | undefined {
 function finish(findings: Finding[]): Result {
   const errors = findings.filter((f) => f.severity === "error");
   const warnings = findings.filter((f) => f.severity === "warning");
-  // ok は「LINE が受け取るか」だけを見る。warning は判断の余地があるので
-  // 含めない。ここを混ぜると、警告を消すために検査を切る動機が生まれる。
+  // ok answers one question: will LINE accept it. Warnings are judgement
+  // calls and stay out of it — fold them in and you create a reason to turn
+  // the check off to make them go away.
   return { ok: errors.length === 0, findings, errors, warnings };
 }
 
-/** 人が読む1行に整える。CI のログや console.log にそのまま流せる。 */
+/** One line for a person to read. Goes straight into a CI log or a console.log. */
 export function format(finding: Finding): string {
   const head = `[${finding.severity}] ${finding.path}  ${finding.message}`;
   return finding.hint === undefined ? head : `${head}\n          ${finding.hint}`;

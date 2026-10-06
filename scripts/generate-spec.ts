@@ -1,15 +1,17 @@
-// src/spec.ts を LINE 公式の OpenAPI 定義から生成する。
+// Generate src/spec.ts from LINE's own OpenAPI definition.
 //
-// 許可プロパティの表を手で書き写すと、必ずどこかで間違える。そして
-// このライブラリで一番危ないのは、未知プロパティの誤検出である。正しい
-// メッセージを「送れません」と止めてしまうと、検査そのものが信用されなく
-// なる。だから表は人間が書かず、LINE 自身が公開している定義から機械的に
-// 起こす。
+// Copying the table of permitted properties out by hand gets something wrong
+// somewhere, every time. And the most dangerous thing this library can do is
+// report an unknown property that is not one: stop a valid message with
+// "you cannot send this" and nobody trusts the check again. So the table is
+// not written by a person. It is derived mechanically from the definition
+// LINE publishes.
 //
 //   npm run spec:generate
 //
-// 取得元は line/line-openapi の messaging-api.yml。生成物の先頭に取得日と
-// sha256 を書き込むので、いつ時点の定義かは生成物を見れば分かる。
+// The source is messaging-api.yml in line/line-openapi. The date and the
+// sha256 go at the top of what is generated, so which version of the
+// definition it came from is readable from the output.
 
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -20,7 +22,7 @@ import { load } from "js-yaml";
 
 const SOURCE = "https://raw.githubusercontent.com/line/line-openapi/main/messaging-api.yml";
 
-// 生成対象。この2つの discriminator の配下がすべて要る。
+// What to generate: everything under these two discriminators.
 const ROOTS = ["FlexComponent", "Action"] as const;
 
 interface Schema {
@@ -37,12 +39,13 @@ interface Schema {
 }
 
 /**
- * 上限が説明文にしか書かれていない項目がある。
+ * Some limits are only stated in the prose.
  *
- * たとえば画像の url は `maxLength` を持たず、説明が
- * "Image URL (Max character limit: 2000)" となっている。機械可読な欄だけを
- * 見ると取りこぼすが、かといって手で書き足すと**表を生成している意味が
- * 無くなる**。出典が LINE の定義であることを保ったまま拾う。
+ * An image's url, for instance, has no `maxLength`; its description reads
+ * "Image URL (Max character limit: 2000)". Reading only the machine-readable
+ * fields misses it, and adding it by hand **defeats the point of generating
+ * the table at all**. This picks it up while the source is still LINE's own
+ * definition.
  */
 function limitFromDescription(text: string | undefined): number | undefined {
   const match = /Max character limit:\s*([0-9]+)/i.exec(text ?? "");
@@ -64,10 +67,10 @@ interface TypeSpec {
 const refName = (ref: string): string => ref.replace("#/components/schemas/", "");
 
 /**
- * allOf を辿って、その型が実際に受け付けるプロパティを集める。
+ * Follow allOf to collect what a type actually accepts.
  *
- * OpenAPI の allOf は継承として使われている。FlexText なら
- * FlexComponent の type と自分の properties の和が答えになる。
+ * OpenAPI's allOf is being used as inheritance here. For FlexText the answer
+ * is FlexComponent's type plus its own properties.
  */
 function collect(schemas: Record<string, Schema>, name: string, seen = new Set<string>()): TypeSpec {
   const spec: TypeSpec = { schema: name, properties: [], required: [], limits: {}, enums: {} };
@@ -104,7 +107,7 @@ function collect(schemas: Record<string, Schema>, name: string, seen = new Set<s
 
 function build(schemas: Record<string, Schema>, root: string): Record<string, TypeSpec> {
   const mapping = schemas[root]?.discriminator?.mapping;
-  if (!mapping) throw new Error(`${root} に discriminator がありません`);
+  if (!mapping) throw new Error(`${root} has no discriminator`);
   const out: Record<string, TypeSpec> = {};
   for (const [typeValue, ref] of Object.entries(mapping)) {
     out[typeValue] = collect(schemas, refName(ref));
@@ -132,7 +135,7 @@ function render(name: string, table: Record<string, TypeSpec>): string {
 
 async function main(): Promise<void> {
   const response = await fetch(SOURCE);
-  if (!response.ok) throw new Error(`取得に失敗しました: ${response.status}`);
+  if (!response.ok) throw new Error(`could not fetch the definition: ${response.status}`);
   const text = await response.text();
   const digest = createHash("sha256").update(text).digest("hex");
   const document = load(text) as Document;
@@ -147,23 +150,24 @@ async function main(): Promise<void> {
   const message = collect(schemas, "FlexMessage");
 
   const header = [
-    "// 自動生成。手で編集しないこと。",
+    "// Generated. Do not edit by hand.",
     "//",
     "//   npm run spec:generate",
     "//",
-    `// 出典   ${SOURCE}`,
-    `// 取得日 ${new Date().toISOString().slice(0, 10)}`,
-    `// sha256 ${digest}`,
+    `// Source    ${SOURCE}`,
+    `// Retrieved ${new Date().toISOString().slice(0, 10)}`,
+    `// sha256    ${digest}`,
     "//",
-    "// この表にあるプロパティ名は LINE 自身の定義から起こしている。手で",
-    "// 書き写していないので、綴り違いによる誤検出は起きない。",
+    "// The property names in this table come from LINE's own definition.",
+    "// Nothing was copied by hand, so no misspelling of one can cause a",
+    "// false positive.",
     "",
     "export interface TypeSpec {",
-    "  /** OpenAPI 上のスキーマ名。指摘の根拠を示すために持つ */",
+    "  /** The schema name in the OpenAPI document, carried so a finding can cite it */",
     "  schema: string;",
     "  properties: readonly string[];",
     "  required: readonly string[];",
-    "  /** maxLength / maxItems。仕様に書かれているものだけ */",
+    "  /** maxLength and maxItems, for the ones the specification states */",
     "  limits: Readonly<Record<string, number>>;",
     "  enums: Readonly<Record<string, readonly string[]>>;",
     "}",
@@ -172,14 +176,14 @@ async function main(): Promise<void> {
 
   const parts = [
     header,
-    `/** Flex メッセージ本体 (altText と contents) */`,
+    `/** The Flex message itself: altText and contents */`,
     `export const FLEX_MESSAGE: TypeSpec = ${JSON.stringify(message, null, 2)};`,
     "",
-    `/** bubble と carousel */`,
+    `/** bubble and carousel */`,
     render("FLEX_CONTAINERS", containers),
-    `/** box / text / image / video など */`,
+    `/** box, text, image, video and the rest */`,
     render("FLEX_COMPONENTS", components),
-    `/** postback / uri / message など */`,
+    `/** postback, uri, message and the rest */`,
     render("ACTIONS", actions),
   ];
 
@@ -188,8 +192,8 @@ async function main(): Promise<void> {
   writeFileSync(target, parts.join("\n"), "utf8");
 
   const count = (t: Record<string, TypeSpec>) => Object.keys(t).length;
-  console.log(`  src/spec.ts を生成しました`);
-  console.log(`    コンテナ ${count(containers)} / コンポーネント ${count(components)} / アクション ${count(actions)}`);
+  console.log(`  wrote src/spec.ts`);
+  console.log(`    ${count(containers)} containers, ${count(components)} components, ${count(actions)} actions`);
   console.log(`    sha256 ${digest.slice(0, 16)}...`);
 }
 

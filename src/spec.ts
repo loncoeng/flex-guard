@@ -1,25 +1,26 @@
-// 自動生成。手で編集しないこと。
+// Generated. Do not edit by hand.
 //
 //   npm run spec:generate
 //
-// 出典   https://raw.githubusercontent.com/line/line-openapi/main/messaging-api.yml
-// 取得日 2026-09-02
-// sha256 0227978ce1b3133e20da034fc33a9241000619ae4fea2fda7b61983abf79577a
+// Source    https://raw.githubusercontent.com/line/line-openapi/main/messaging-api.yml
+// Retrieved 2026-09-02
+// sha256    0227978ce1b3133e20da034fc33a9241000619ae4fea2fda7b61983abf79577a
 //
-// この表にあるプロパティ名は LINE 自身の定義から起こしている。手で
-// 書き写していないので、綴り違いによる誤検出は起きない。
+// The property names in this table come from LINE's own definition.
+// Nothing was copied by hand, so no misspelling of one can cause a
+// false positive.
 
 export interface TypeSpec {
-  /** OpenAPI 上のスキーマ名。指摘の根拠を示すために持つ */
+  /** The schema name in the OpenAPI document, carried so a finding can cite it */
   schema: string;
   properties: readonly string[];
   required: readonly string[];
-  /** maxLength / maxItems。仕様に書かれているものだけ */
+  /** maxLength and maxItems, for the ones the specification states */
   limits: Readonly<Record<string, number>>;
   enums: Readonly<Record<string, readonly string[]>>;
 }
 
-/** Flex メッセージ本体 (altText と contents) */
+/** The Flex message itself: altText and contents */
 export const FLEX_MESSAGE: TypeSpec = {
   "schema": "FlexMessage",
   "properties": [
@@ -38,7 +39,7 @@ export const FLEX_MESSAGE: TypeSpec = {
   "enums": {}
 };
 
-/** bubble と carousel */
+/** bubble and carousel */
 export const FLEX_CONTAINERS: Readonly<Record<string, TypeSpec>> = {
   "bubble": {
     schema: "FlexBubble",
@@ -56,7 +57,7 @@ export const FLEX_CONTAINERS: Readonly<Record<string, TypeSpec>> = {
   },
 };
 
-/** box / text / image / video など */
+/** box, text, image, video and the rest */
 export const FLEX_COMPONENTS: Readonly<Record<string, TypeSpec>> = {
   "box": {
     schema: "FlexBox",
@@ -123,7 +124,7 @@ export const FLEX_COMPONENTS: Readonly<Record<string, TypeSpec>> = {
   },
 };
 
-/** postback / uri / message など */
+/** postback, uri, message and the rest */
 export const ACTIONS: Readonly<Record<string, TypeSpec>> = {
   "camera": {
     schema: "CameraAction",

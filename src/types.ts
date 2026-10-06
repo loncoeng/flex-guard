@@ -1,46 +1,48 @@
-// 検査結果の型。
+// The shape of a result.
 //
-// severity を error と warning に分けているのが、このライブラリの中心にある
-// 判断である。両者は「直さないとどうなるか」が根本的に違う。
+// Splitting severity into error and warning is the decision this library is
+// built around. The two differ fundamentally in what happens if you leave
+// them alone.
 //
-//   error    LINE API が 400 を返す。送信そのものが失敗するので、すぐ気付く
-//   warning  送信は成功する。相手の端末で意図と違って見えるだけなので、
-//            **送った側には永久に分からない**
+//   error    the LINE API answers 400. The send itself fails, so you find out
+//   warning  the send succeeds. It just looks wrong on the recipient's device,
+//            and **the sender never finds out at all**
 //
-// 後者の方が厄介である。エラーログにも残らず、相手からの反応が無いという
-// 形でしか現れない。型検査では構造しか見られないので、ここは実行時に見る
-// しかない。
+// The second is the troublesome one. Nothing reaches an error log, and the
+// only sign of it is the absence of a reply. A type checker can only see the
+// structure, so this is a thing to look at while it runs.
 
-/** error は LINE に拒否される。warning は送れるが意図通りに出ない。 */
+/** error means LINE refuses it. warning means it sends and does not look right. */
 export type Severity = "error" | "warning";
 
 export interface Finding {
-  /** ルール識別子。`schema/unknown-property` のように分類/名前で組む */
+  /** The rule's identifier, built as category/name: `schema/unknown-property` */
   rule: string;
   severity: Severity;
-  /** 問題のある場所。`$.contents.body.contents[2]` の形 */
+  /** Where the problem is, as `$.contents.body.contents[2]` */
   path: string;
-  /** 何が起きているか */
+  /** What is happening */
   message: string;
-  /** どう直すか。ここを丁寧に書かないと、検出できても直せない */
+  /** How to fix it. Written carelessly, a finding is something you can see
+   *  and cannot act on */
   hint?: string;
-  /** 根拠。数値の上限を持つルールには必ず付ける */
+  /** The citation. Every rule with a numeric limit carries one */
   spec?: string;
 }
 
 export interface Result {
-  /** error が 1 件も無い。つまり LINE は受け取る */
+  /** No errors at all — which is to say, LINE will accept it */
   ok: boolean;
   findings: Finding[];
   errors: Finding[];
   warnings: Finding[];
 }
 
-/** ルールが受け取る文脈。ルール側で JSON を作り直さずに済むようにしておく。 */
+/** What a rule is handed, so that no rule has to rebuild the JSON itself. */
 export interface RuleContext {
-  /** 検査対象のメッセージ全体 */
+  /** The whole message being checked */
   message: unknown;
-  /** シリアライズ済みの JSON。サイズ検査で毎回 stringify しないため */
+  /** The serialized JSON, so the size rules do not stringify it again */
   serialized: string;
 }
 

@@ -1,7 +1,7 @@
-// 構造の検査。すべて error にしている。
+// The structural checks. All of them are errors.
 //
-// ここで挙がるものは LINE API が 400 を返す。送信そのものが失敗するので、
-// 直さない選択肢が無い。
+// Everything here makes the LINE API answer 400. The send itself fails, so
+// there is no option of leaving it alone.
 
 import { ACTIONS, FLEX_COMPONENTS, FLEX_CONTAINERS, FLEX_MESSAGE, type TypeSpec } from "../spec.ts";
 import type { Finding, RuleContext } from "../types.ts";
@@ -23,12 +23,12 @@ function known(kind: Visit["kind"]): readonly string[] {
 }
 
 /**
- * 未知のプロパティ。
+ * A property that is not in the specification.
  *
- * LINE API は知らないキーがあるとメッセージ全体を拒否する。これが起きる
- * のは、独自のメタ情報を JSON に持たせている場合が多い。タップ回数や
- * 内部 ID を content に載せて、送信の直前に取り除く設計にしていると、
- * 送信経路を1つ増やしたときに取り除き忘れる。
+ * The LINE API refuses the whole message over a key it does not know. Usually
+ * this happens because the JSON is carrying metadata of your own: a tap count
+ * or an internal id tucked into the content, stripped out just before
+ * sending. Add one more send path and that is the one that forgets.
  */
 export function unknownProperty(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
@@ -41,10 +41,10 @@ export function unknownProperty(context: RuleContext): Finding[] {
         rule: "schema/unknown-property",
         severity: "error",
         path: `${visit.path}.${key}`,
-        message: `${spec.schema} が知らないプロパティ "${key}" があります`,
+        message: `${spec.schema} has no property "${key}"`,
         hint:
-          "LINE は未知のプロパティを含むメッセージを受け取りません。独自のメタ情報を"
-          + "載せているなら、送信の直前に取り除いてください。送信経路が複数あるなら全部です。",
+          "LINE rejects a message containing properties it does not know. If you attach"
+          + " your own metadata, strip it just before sending — on every send path you have.",
         spec: REFERENCE,
       });
     }
@@ -52,7 +52,7 @@ export function unknownProperty(context: RuleContext): Finding[] {
   return findings;
 }
 
-/** 必須プロパティの欠落。altText や video の previewUrl はここで挙がる。 */
+/** A missing required property. altText and a video's previewUrl come up here. */
 export function missingRequired(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
   for (const visit of walk(context.message)) {
@@ -64,7 +64,7 @@ export function missingRequired(context: RuleContext): Finding[] {
         rule: "schema/missing-required",
         severity: "error",
         path: `${visit.path}.${key}`,
-        message: `${spec.schema} に必須の "${key}" がありません`,
+        message: `${spec.schema} is missing the required "${key}"`,
         hint: hintForRequired(spec.schema, key),
         spec: REFERENCE,
       });
@@ -75,18 +75,18 @@ export function missingRequired(context: RuleContext): Finding[] {
 
 function hintForRequired(schema: string, key: string): string {
   if (schema === "FlexMessage" && key === "altText") {
-    return "PC 版と通知欄に出る文字です。無いと送信できません。";
+    return "This is the text shown on desktop and in the notification. Without it the message cannot be sent.";
   }
   if (schema === "FlexVideo" && key === "previewUrl") {
-    return "サムネイル画像の URL です。用意できない動画は送らないか、先頭フレームから生成してください。";
+    return "The URL of a thumbnail. If you cannot produce one, either do not send the video or generate it from the first frame.";
   }
   if (schema === "FlexVideo" && key === "altContent") {
-    return "動画に対応していない LINE で代わりに出す画像です。無いとその端末で何も出ません。";
+    return "The image shown instead on a LINE that cannot play video. Without it, those devices show nothing at all.";
   }
-  return `${schema} には ${key} が要ります。無いと LINE がメッセージ全体を拒否します。`;
+  return `${schema} requires ${key}. Without it, LINE rejects the whole message.`;
 }
 
-/** type の値が仕様に無い。綴り違いのほか、独自の型を混ぜている場合に出る。 */
+/** A type value the specification does not have — a misspelling, or a type of your own. */
 export function unknownType(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
   for (const visit of walk(context.message)) {
@@ -98,16 +98,16 @@ export function unknownType(context: RuleContext): Finding[] {
       path: `${visit.path}.type`,
       message:
         visit.type === undefined
-          ? "type がありません"
-          : `"${visit.type}" は ${visit.kind} の型として仕様にありません`,
-      hint: `使えるのは ${known(visit.kind).join(" / ")} です。`,
+          ? "there is no type here"
+          : `"${visit.type}" is not a ${visit.kind} type in the specification`,
+      hint: `The ones there are: ${known(visit.kind).join(" / ")}.`,
       spec: REFERENCE,
     });
   }
   return findings;
 }
 
-/** enum に無い値。size に "large" と書くような取り違えを拾う。 */
+/** A value outside an enum — catches writing "large" for a size, and the like. */
 export function invalidEnum(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
   for (const visit of walk(context.message)) {
@@ -120,8 +120,8 @@ export function invalidEnum(context: RuleContext): Finding[] {
         rule: "schema/invalid-enum",
         severity: "error",
         path: `${visit.path}.${key}`,
-        message: `"${value}" は ${spec.schema}.${key} に使えません`,
-        hint: `使えるのは ${allowed.join(" / ")} です。`,
+        message: `"${value}" is not a value ${spec.schema}.${key} accepts`,
+        hint: `The ones it does: ${allowed.join(" / ")}.`,
         spec: REFERENCE,
       });
     }

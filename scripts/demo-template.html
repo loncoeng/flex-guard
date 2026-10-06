@@ -4,8 +4,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap">
 
 <style>
-  /* 校正刷りの赤入れを下敷きにしている。冷たい紙の地、校正鉛筆の青、
-     茜と黄土の指摘。地の灰は青緑に寄せて、選んだ色であることを示す。 */
+  /* Built on a marked-up proof: a cool paper ground, proof-pencil blue, and
+     findings in madder and ochre. The grey leans green so that it reads as a
+     colour somebody chose. */
   :root {
     --ground: #EDEFEA;
     --surface: #FCFCFA;
@@ -93,7 +94,7 @@
     gap: clamp(1.5rem, 3vw, 2.25rem);
   }
 
-  /* --- 見出し --- */
+  /* --- masthead --- */
 
   .masthead { display: flex; flex-direction: column; gap: 0.75rem; }
 
@@ -127,7 +128,7 @@
   }
   .thesis strong { color: var(--ink); font-weight: 600; }
 
-  /* --- 作業台 --- */
+  /* --- the bench --- */
 
   .bench {
     display: grid;
@@ -171,7 +172,7 @@
     color: var(--ink-faint);
   }
 
-  /* --- 入力 --- */
+  /* --- input --- */
 
   .presets {
     display: flex;
@@ -218,7 +219,7 @@
   }
   textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-  /* --- 判定 --- */
+  /* --- verdict --- */
 
   .verdict {
     display: flex;
@@ -241,7 +242,7 @@
   .verdict[data-state="idle"] .verdict-dot { background: var(--ink-faint); }
   .verdict[data-state="idle"] .verdict-text { color: var(--ink-soft); }
 
-  /* --- 指摘 --- */
+  /* --- findings --- */
 
   .findings { padding: 0.9rem; display: flex; flex-direction: column; gap: 1.25rem; }
 
@@ -259,8 +260,9 @@
   .group[data-kind="error"] .group-label { color: var(--error); }
   .group[data-kind="warning"] .group-label { color: var(--warn); }
 
-  /* error は実線、warning は破線。「送れてしまうので気付けない」ことを
-     色ではなく形で示す。色だけだと、どちらも同じ重さに見える。 */
+  /* A solid rule for error, a dashed one for warning. "It sends, so you never
+     find out" is marked by shape rather than colour, because colour alone
+     makes the two read as equally heavy. */
   .finding {
     padding: 0.55rem 0 0.55rem 0.8rem;
     display: flex;
@@ -298,7 +300,7 @@
 
   .empty { color: var(--ink-faint); font-size: var(--step--1); padding: 1.5rem 0; text-align: center; }
 
-  /* --- 種別の判定 --- */
+  /* --- the message-type check --- */
 
   .detect {
     margin-top: auto;
@@ -323,7 +325,7 @@
   .detect[data-flex="false"] .detect-value { color: var(--ink-soft); }
   .detect-reason { color: var(--ink-soft); font-family: var(--mono); font-size: 0.6875rem; }
 
-  /* --- 読み方 --- */
+  /* --- how to read it --- */
 
   .reading {
     display: grid;
@@ -375,27 +377,27 @@
 <div class="wrap">
   <header class="masthead">
     <div class="eyebrow">LINE Messaging API / Flex Message</div>
-    <h1>型では防げない<br>Flex の失敗</h1>
+    <h1>The Flex failures<br>types cannot catch</h1>
     <p class="thesis">
-      型は通っても、LINE は <span class="mark">400</span> を返します。しかも失敗は 2 種類あって、
-      <strong>片方はすぐ気付き、もう片方は永久に気付きません。</strong>
-      JSON を貼り替えるか、下の例を選んでください。
+      Your types compile and LINE still returns <span class="mark">400</span>. And there
+      are two kinds of failure: <strong>one you notice immediately, and one you never
+      notice at all.</strong> Paste your own JSON, or pick an example below.
     </p>
   </header>
 
   <div class="bench">
-    <section class="panel" aria-label="検査する JSON">
+    <section class="panel" aria-label="The JSON being checked">
       <div class="panel-head">
-        <span class="panel-title">送ろうとしているもの</span>
+        <span class="panel-title">What you are about to send</span>
         <span class="counter" id="size-readout">—</span>
       </div>
-      <div class="presets" id="presets" role="group" aria-label="例を選ぶ"></div>
-      <textarea id="input" spellcheck="false" aria-label="Flex メッセージの JSON"></textarea>
+      <div class="presets" id="presets" role="group" aria-label="Pick an example"></div>
+      <textarea id="input" spellcheck="false" aria-label="A Flex message, as JSON"></textarea>
     </section>
 
-    <section class="panel" aria-label="検査結果">
+    <section class="panel" aria-label="The result">
       <div class="panel-head">
-        <span class="panel-title">検査結果</span>
+        <span class="panel-title">Result</span>
         <span class="counter" id="counts">—</span>
       </div>
       <div class="verdict" id="verdict" data-state="idle" role="status">
@@ -414,24 +416,29 @@
 
   <div class="reading">
     <article class="card" data-kind="error">
-      <h2>error — LINE が受け取らない</h2>
+      <h2>error — LINE will not accept it</h2>
       <p>
-        送信そのものが失敗し、<code>400</code> が返ります。<strong>直さない選択肢がありません。</strong>
-        未知のプロパティ、必須の欠落、10KB / 50KB の超過、アクションの <code>data</code> が 300 文字を超えたとき。
+        The send itself fails and <code>400</code> comes back. <strong>There is no option
+        of leaving it alone.</strong> A property not in the specification, a missing
+        required one, over 10KB or 50KB, or an action's <code>data</code> past 300
+        characters.
       </p>
     </article>
     <article class="card" data-kind="warning">
-      <h2>warning — 送信は成功する</h2>
+      <h2>warning — it sends</h2>
       <p>
-        LINE は受け取り、配信数も増えます。ただ相手の画面では文字が背景に溶けていたり、画像の場所が空欄になっています。
-        <strong>エラーは返らず、ログにも残りません。</strong>反応が無いという形でしか現れないので、運用していても分かりません。
+        LINE accepts it and the delivery count goes up. It is just that on the
+        recipient's screen the text has dissolved into the background, or the image
+        slot is blank. <strong>No error comes back, and nothing reaches a log.</strong>
+        The only sign of it is the absence of a reply, so running it in production will
+        not tell you either.
       </p>
     </article>
   </div>
 
   <footer>
-    <span>検査しているのは <code>flex-guard</code> のビルド結果そのもので、デモ用の書き直しではありません。</span>
-    <span>許可プロパティの表は LINE 公開の OpenAPI 定義から生成しています。</span>
+    <span>What runs here is <code>flex-guard</code>'s own build output, not a rewrite for the demo.</span>
+    <span>The table of permitted properties is generated from LINE's published OpenAPI definition.</span>
     <span>MIT</span>
   </footer>
 </div>
@@ -444,7 +451,7 @@
   (() => {
     const bubble = (extra = {}, bodyExtra = []) => ({
       type: "flex",
-      altText: "本日のお知らせ",
+      altText: "Today's notice",
       contents: {
         type: "bubble",
         size: "mega",
@@ -453,8 +460,8 @@
           layout: "vertical",
           spacing: "md",
           contents: [
-            { type: "text", text: "本日のお知らせ", weight: "bold", size: "lg" },
-            { type: "text", text: "17時に配信します", wrap: true },
+            { type: "text", text: "Today's notice", weight: "bold", size: "lg" },
+            { type: "text", text: "Going out at 17:00", wrap: true },
             ...bodyExtra,
           ],
         },
@@ -464,7 +471,7 @@
           contents: [{
             type: "button",
             style: "primary",
-            action: { type: "postback", label: "詳しく見る", data: "detail" },
+            action: { type: "postback", label: "Read more", data: "detail" },
           }],
         },
       },
@@ -478,21 +485,21 @@
     };
 
     const PRESETS = [
-      { name: "問題なし", build: () => bubble() },
+      { name: "Nothing wrong", build: () => bubble() },
       {
-        name: "メタ情報の外し忘れ",
+        name: "Metadata left in",
         build: () => bubble({ appMeta: { tapLimit: 1, group: "a3f" } }),
       },
       {
-        name: "動画のサムネイル無し",
+        name: "Video with no thumbnail",
         build: () => bubble({}, [{ type: "video", url: "https://cdn.example.com/spot.mp4" }]),
       },
       {
-        name: "data が長すぎる",
-        build: () => withAction(JSON.stringify({ action: "open", label: "詳しく見る", target: "x".repeat(320) })),
+        name: "data too long",
+        build: () => withAction(JSON.stringify({ action: "open", label: "Read more", target: "x".repeat(320) })),
       },
       {
-        name: "ダークモードで消える",
+        name: "Disappears in dark mode",
         build: () => {
           const message = bubble();
           message.contents.body.contents[0].color = "#FFFFFF";
@@ -501,15 +508,15 @@
         },
       },
       {
-        name: "差し込みで壊れうる",
+        name: "A placeholder that can break it",
         build: () => {
           const message = bubble();
-          message.contents.body.contents[0].text = "{name} さん、こんにちは";
+          message.contents.body.contents[0].text = "{name}, hello";
           return message;
         },
       },
       {
-        name: "テキストとして送っている",
+        name: "Being sent as text",
         raw: () => JSON.stringify(bubble().contents, null, 2),
       },
     ];
@@ -590,13 +597,13 @@
       const raw = input.value;
       sizeReadout.textContent = raw.trim() === ""
         ? "—"
-        : `${encoder.encode(raw).length.toLocaleString()} バイト`;
+        : `${encoder.encode(raw).length.toLocaleString()} bytes`;
 
       const detected = FlexGuard.looksLikeFlex(raw);
       detect.dataset.flex = String(detected.looksLikeFlex);
       detectValue.textContent = detected.looksLikeFlex
-        ? "テキストとして送ると JSON がそのまま届きます"
-        : "テキストとして送っても問題ありません";
+        ? "sent as text, the JSON arrives as JSON"
+        : "nothing wrong with sending this as text";
       detectReason.textContent = detected.reason;
 
       findingsEl.replaceChildren();
@@ -604,7 +611,7 @@
       if (raw.trim() === "") {
         setVerdict("idle", "—", "");
         counts.textContent = "—";
-        findingsEl.append(element("p", "empty", "JSON を貼るか、上の例を選んでください"));
+        findingsEl.append(element("p", "empty", "Paste some JSON, or pick an example above"));
         return;
       }
 
@@ -612,7 +619,7 @@
       try {
         parsed = JSON.parse(raw);
       } catch (error) {
-        setVerdict("fail", "JSON として読めません", "");
+        setVerdict("fail", "This does not parse as JSON", "");
         counts.textContent = "—";
         findingsEl.append(element("p", "empty", String(error.message)));
         return;
@@ -624,18 +631,18 @@
       if (result.ok) {
         setVerdict(
           "pass",
-          "LINE は受け取ります",
-          result.warnings.length > 0 ? "そして、この先は誰も教えてくれません" : "",
+          "LINE will accept it",
+          result.warnings.length > 0 ? "and from here on, nobody will tell you" : "",
         );
       } else {
-        setVerdict("fail", "LINE は受け取りません", "送信の時点で失敗します");
+        setVerdict("fail", "LINE will not accept it", "it fails at the point of sending");
       }
 
       if (result.errors.length > 0) {
         findingsEl.append(renderGroup(
           "error",
           "error",
-          "送信そのものが失敗します。すぐ気付きます。",
+          "The send itself fails. You find out straight away.",
           result.errors,
         ));
       }
@@ -643,12 +650,12 @@
         findingsEl.append(renderGroup(
           "warning",
           "warning",
-          "送信は成功します。相手の画面だけが違い、あなたには何も返りません。",
+          "It sends. Only their screen is different, and nothing comes back to you.",
           result.warnings,
         ));
       }
       if (result.findings.length === 0) {
-        findingsEl.append(element("p", "empty", "指摘はありません"));
+        findingsEl.append(element("p", "empty", "No findings"));
       }
     }
 

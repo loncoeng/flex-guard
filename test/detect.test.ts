@@ -1,11 +1,13 @@
-// テキストとして送ろうとしているものが Flex でないか、の判定。
+// Deciding whether what is about to go out as text is Flex.
 //
-// この事故はエラーにならない。送信は成功し、配信数も増える。管理画面の
-// プレビューは中身を見て描いていることが多いので、そちらでは正しく絵で
-// 出る。**送った側から見て、すべて正常に見える。**
+// Nothing about this accident is an error. The send succeeds and the delivery
+// count goes up, and an admin screen's preview usually renders from the
+// contents, so it draws correctly there. **From the sending side, everything
+// looks fine.**
 //
-// 誤検出も同じくらい困る。角括弧で始まる普通の本文を Flex だと言い出すと、
-// 送れるはずのものが止まる。両方向を固定しておく。
+// A false positive is just as much trouble. Call ordinary body text that
+// starts with a bracket Flex, and something that should have gone out is
+// stopped. Both directions are pinned here.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -14,59 +16,60 @@ import { looksLikeFlex } from "../src/index.ts";
 
 const isFlex = (text: string): boolean => looksLikeFlex(text).looksLikeFlex;
 
-test("bubble の JSON を見つける", () => {
+test("a bubble's JSON is recognised", () => {
   const result = looksLikeFlex('{"type":"bubble","body":{"type":"box","layout":"vertical","contents":[]}}');
   assert.equal(result.looksLikeFlex, true);
   assert.equal(result.containerType, "bubble");
 });
 
-test("carousel の JSON を見つける", () => {
+test("a carousel's JSON is recognised", () => {
   assert.equal(looksLikeFlex('{"type":"carousel","contents":[]}').containerType, "carousel");
 });
 
-test("配列で始まる形も見る", () => {
-  // 先頭が { かどうかだけで判定すると、ここを取りこぼす。
+test("the array form is recognised", () => {
+  // Looking only at whether it starts with { misses this one.
   assert.equal(isFlex('[{"type":"bubble","body":{}}]'), true);
 });
 
-test("flex メッセージが丸ごと入っている形も見る", () => {
+test("a whole flex message is recognised", () => {
   const result = looksLikeFlex('{"type":"flex","altText":"x","contents":{"type":"carousel","contents":[]}}');
   assert.equal(result.looksLikeFlex, true);
   assert.equal(result.containerType, "carousel");
 });
 
-// --- 誤検出しないこと ---
+// --- and the false positives ---
 
-test("角括弧で始まる普通の本文を Flex と言わない", () => {
-  // 呼び出しタグや箇条書きの本文がここに落ちる。止めてはいけない。
-  for (const text of ["[FORM_1] からご回答ください", "[重要] 明日の予定", "[1] はい [2] いいえ"]) {
-    assert.equal(isFlex(text), false, `${text} を Flex と判定した`);
+test("ordinary text starting with a bracket is not Flex", () => {
+  // Form call tags and bulleted text land here. They must not be stopped.
+  for (const text of ["[FORM_1] fill this in", "[important] tomorrow's plan", "[1] yes [2] no"]) {
+    assert.equal(isFlex(text), false, `${text} was called Flex`);
   }
 });
 
-test("波括弧で始まる普通の本文を Flex と言わない", () => {
-  assert.equal(isFlex("{name} さん、こんにちは"), false);
+test("ordinary text starting with a brace is not Flex", () => {
+  assert.equal(isFlex("{name}, hello"), false);
 });
 
-test("Flex でない JSON を Flex と言わない", () => {
+test("JSON that is not Flex is not Flex", () => {
   for (const text of ['{"type":"text","text":"hello"}', '{"foo":1}', "[1,2,3]", '{"type":"image"}']) {
-    assert.equal(isFlex(text), false, `${text} を Flex と判定した`);
+    assert.equal(isFlex(text), false, `${text} was called Flex`);
   }
 });
 
-test("普通の文章を Flex と言わない", () => {
-  for (const text of ["こんにちは", "", "   ", "https://example.com"]) {
+test("ordinary prose is not Flex", () => {
+  for (const text of ["hello", "", "   ", "https://example.com"]) {
     assert.equal(isFlex(text), false);
   }
 });
 
-test("前後に空白があっても見つける", () => {
+test("surrounding whitespace does not hide it", () => {
   assert.equal(isFlex('\n  {"type":"bubble"}  \n'), true);
 });
 
-test("判定した理由を返す", () => {
-  // 判定を疑うときに、何を見てそう言ったのかが分からないと調べようがない。
+test("it says what it decided on", () => {
+  // Doubting the answer, with no record of what it was read from, leaves
+  // nothing to investigate.
   assert.match(looksLikeFlex('{"type":"bubble"}').reason, /bubble/);
   assert.match(looksLikeFlex("[FORM_1]").reason, /JSON/);
-  assert.match(looksLikeFlex("こんにちは").reason, /開始文字/);
+  assert.match(looksLikeFlex("hello").reason, /start/);
 });

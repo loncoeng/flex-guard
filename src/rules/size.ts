@@ -1,23 +1,23 @@
-// 大きさの検査。
+// The size checks.
 //
-// ここが型検査では絶対に届かない領域である。JSON にしてバイト数を数える
-// まで分からないので、コンパイル時には何も言えない。そして超えたときは
-// 送信が失敗する。
+// This is the territory a type checker cannot reach at all. Nothing is known
+// until the thing is serialized and the bytes are counted, so at compile time
+// there is nothing to say. And over the limit, the send fails.
 
 import { ACTIONS } from "../spec.ts";
 import type { Finding, RuleContext } from "../types.ts";
 import { rootKind, specFor, walk } from "../walk.ts";
 
-// 出典: LINE Engineering "Introducing Flex Message"
+// Source: LINE Engineering, "Introducing Flex Message"
 // https://engineering.linecorp.com/en/blog/introducing-flex-message-a-new-message-type-for-line-messaging-api/
 const BUBBLE_MAX_BYTES = 10 * 1024;
 const CAROUSEL_MAX_BYTES = 50 * 1024;
 const SIZE_REFERENCE =
   "https://engineering.linecorp.com/en/blog/introducing-flex-message-a-new-message-type-for-line-messaging-api/";
 
-// TextEncoder を使うのは、Node とブラウザの両方で動かすため。Buffer は
-// Node にしかない。上限はバイト数で決まっており、日本語は 1 文字 3 バイト
-// なので、文字数で数えると 3 倍近くずれる。
+// TextEncoder rather than Buffer, so this runs in a browser as well as in
+// Node. The limit is in bytes, and non-ASCII text is three bytes a character
+// in UTF-8 — counting characters is out by nearly a factor of three.
 const encoder = new TextEncoder();
 const bytes = (value: unknown): number =>
   encoder.encode(JSON.stringify(value) ?? "").length;
@@ -25,10 +25,11 @@ const bytes = (value: unknown): number =>
 const kb = (n: number): string => `${(n / 1024).toFixed(1)}KB`;
 
 /**
- * bubble は 10KB、carousel は 50KB まで。
+ * A bubble may be 10KB and a carousel 50KB.
  *
- * 画像を data URI で埋めたり、長い本文を入れたときに超える。日本語は
- * 1文字 3 バイトなので、見た目の文字数より早く上限に届く。
+ * What takes you over is an image embedded as a data URI, or a long body of
+ * text. Non-ASCII text is three bytes a character, so it reaches the limit
+ * well before it looks like it should.
  */
 export function containerTooLarge(context: RuleContext): Finding[] {
   const message = context.message as Record<string, unknown> | null;
@@ -46,24 +47,24 @@ export function containerTooLarge(context: RuleContext): Finding[] {
       rule: type === "carousel" ? "size/carousel-too-large" : "size/bubble-too-large",
       severity: "error",
       path: "$.contents",
-      message: `${String(type)} が ${kb(limit)} を超えています (${kb(actual)})`,
+      message: `${String(type)} exceeds ${kb(limit)} (${kb(actual)})`,
       hint:
-        "画像を data URI で埋め込んでいませんか。URL にすると大きく減ります。"
-        + " 日本語は 1 文字 3 バイトなので、本文の長さも見た目より効きます。",
+        "Are you embedding an image as a data URI? A URL instead takes most of it off."
+        + " Non-ASCII text is three bytes a character, so the body counts for more than it looks like.",
       spec: SIZE_REFERENCE,
     },
   ];
 }
 
 /**
- * 仕様に上限のある項目が、その上限を超えている。
+ * A property with a limit in the specification, over that limit.
  *
- * 対象はアクションの `data` だけではない。画像の `url` にも 2000 文字の
- * 上限がある。どこに上限があるかは仕様表から引くので、ここに数値を書か
- * ない。**書けば LINE 側が変えたときに嘘になる。**
+ * Not only an action's `data`: an image's `url` has a 2000-character limit
+ * too. Where the limits are is read from the spec table, so no number is
+ * written here. **Written here, it becomes a lie the moment LINE changes it.**
  *
- * 超えたときの現れ方が悪い。`data` の場合は押しても何も起きないという
- * 形になり、例外もログも出ない。
+ * How this shows up is the bad part. For `data`, it takes the form of a
+ * button that does nothing when tapped. No exception, nothing in a log.
  */
 export function propertyTooLong(context: RuleContext): Finding[] {
   const findings: Finding[] = [];
@@ -79,7 +80,7 @@ export function propertyTooLong(context: RuleContext): Finding[] {
         rule: "size/property-too-long",
         severity: "error",
         path: `${visit.path}.${key}`,
-        message: `${spec.schema}.${key} が ${limit} 文字を超えています (${value.length})`,
+        message: `${spec.schema}.${key} exceeds ${limit} characters (${value.length})`,
         hint: hintFor(spec.schema, key),
         spec: "https://github.com/line/line-openapi/blob/main/messaging-api.yml",
       });
@@ -90,11 +91,11 @@ export function propertyTooLong(context: RuleContext): Finding[] {
 
 function hintFor(schema: string, key: string): string {
   if (key === "data") {
-    return "アクションの中身をそのまま載せていませんか。識別子だけを入れて、"
-      + "実体は送信ログなど別の場所から引き直す形にすると、上限に当たらなくなります。";
+    return "Are you putting the action itself in here? Carry an identifier and read the"
+      + " payload back from somewhere else, and the limit stops mattering.";
   }
   if (key === "url") {
-    return "署名つきの URL やクエリを大量に付けていませんか。短縮するか、中継する経路を用意してください。";
+    return "A signed URL, or a lot of query string? Shorten it, or put something in front of it to redirect.";
   }
-  return `${schema}.${key} は ${key} の上限を超えると LINE に拒否されます。`;
+  return `${schema}.${key} over its limit is refused by LINE.`;
 }

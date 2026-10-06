@@ -54,7 +54,8 @@ if (!result.ok) {
 
 [warning] $.contents.body.contents[0].color  A near-white text colour (#FFFFFF) is set explicitly
           LINE adapts only the default text colour to the background. Setting a colour
-          opts out of that, so it dissolves for anyone in dark mode.
+          opts out of that, so it dissolves for anyone in dark mode. Either drop the
+          colour, or set a background colour in the same place.
 ```
 
 ## Try it

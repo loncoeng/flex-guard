@@ -1,10 +1,10 @@
-// Flex メッセージの木を辿る。
+// Walking the tree of a Flex message.
 //
-// 子を持つ場所を型ごとに明示している。「type を持つオブジェクトなら全部
-// 潜る」という書き方の方が短いが、それだと styles や background のような
-// 「部品ではないオブジェクト」まで部品として扱ってしまい、正しい JSON に
-// 対して未知の型だと言い出す。誤検出は見逃しより高くつくので、辿る場所は
-// 明示する。
+// Where the children are is written out per type. "Descend into anything with
+// a type" would be shorter, and it would also treat objects that are not
+// components — styles, background — as though they were, and start claiming
+// that valid JSON contains unknown types. A false positive costs more than a
+// miss, so what gets walked is stated explicitly.
 
 import { FLEX_COMPONENTS, FLEX_CONTAINERS } from "./spec.ts";
 
@@ -13,21 +13,22 @@ export type NodeKind = "message" | "container" | "component" | "action";
 export interface Visit {
   kind: NodeKind;
   node: Record<string, unknown>;
-  /** $.contents.body.contents[2] の形 */
+  /** In the form $.contents.body.contents[2] */
   path: string;
-  /** node.type の値。文字列でなければ undefined */
+  /** The value of node.type, or undefined if it is not a string */
   type: string | undefined;
 }
 
-/** その型が持つ「部品が入るプロパティ」。ここに無いものは辿らない。 */
+/** For each type, the properties children live in. Anything not here is not walked. */
 const COMPONENT_CHILDREN: Readonly<Record<string, readonly string[]>> = {
   bubble: ["header", "hero", "body", "footer"],
   box: ["contents"],
-  // text.contents は span の配列。span も部品として同じ表で検査できる。
+  // text.contents is an array of spans, and a span checks against the same
+  // table as any other component.
   text: ["contents"],
 };
 
-/** carousel だけが container を子に持つ。 */
+/** carousel is the only type with containers as children. */
 const CONTAINER_CHILDREN: Readonly<Record<string, readonly string[]>> = {
   carousel: ["contents"],
 };
@@ -39,10 +40,10 @@ const typeOf = (node: Record<string, unknown>): string | undefined =>
   typeof node["type"] === "string" ? node["type"] : undefined;
 
 /**
- * 入口の種類を判定する。
+ * Work out what was handed in.
  *
- * `{type:"flex", altText, contents}` を渡されることもあれば、中身の
- * bubble だけを渡されることもある。どちらでも検査できる方が使いやすい。
+ * Sometimes it is `{type:"flex", altText, contents}`, and sometimes it is just
+ * the bubble from inside one. Accepting either is the more useful behaviour.
  */
 export function rootKind(value: unknown): NodeKind | undefined {
   if (!isObject(value)) return undefined;
@@ -53,10 +54,11 @@ export function rootKind(value: unknown): NodeKind | undefined {
 }
 
 /**
- * 木を深さ優先で辿る。訪れた順に返す。
+ * Walk the tree depth-first, yielding in visit order.
  *
- * 一度見たオブジェクトは辿り直さない。組み立ての途中で同じオブジェクトを
- * 2 か所に入れると木ではなくなり、素直に再帰すると戻ってこられなくなる。
+ * An object is never walked twice. Putting the same object in two places
+ * while building a message stops it being a tree, and a plain recursion into
+ * one never comes back.
  */
 export function* walk(root: unknown): Generator<Visit> {
   const kind = rootKind(root);
@@ -84,7 +86,8 @@ function* visit(
   const type = typeOf(node);
   yield { kind, node, path, type };
 
-  // action はどの部品にも付きうるので、型ではなくキーで拾う。
+  // An action can hang off any component, so it is picked up by key rather
+  // than by type.
   const action = node["action"];
   if (isObject(action)) {
     yield* visit(action, `${path}.action`, "action", seen);
@@ -114,7 +117,7 @@ function* children(
   if (isObject(value)) yield* visit(value, path, kind, seen);
 }
 
-/** その訪問に対応する仕様表を返す。未知の型なら undefined。 */
+/** The spec table for a visit, or undefined for a type that is not in one. */
 export function specFor(visit: Visit) {
   if (visit.type === undefined) return undefined;
   if (visit.kind === "container") return FLEX_CONTAINERS[visit.type];
